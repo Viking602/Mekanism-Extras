@@ -41,6 +41,9 @@ public enum CTTier implements IAdvancedTier, StringRepresentable {
         return name().toLowerCase(Locale.ROOT);
     }
 
+    public long getCapacity() { return getStorage(); }
+    public int getTransferRate() { return com.google.common.primitives.Ints.saturatedCast(getOutput()); }
+
     public long getStorage() {
         return storageReference == null ? getAdvanceStorage() : storageReference.getOrDefault();
     }

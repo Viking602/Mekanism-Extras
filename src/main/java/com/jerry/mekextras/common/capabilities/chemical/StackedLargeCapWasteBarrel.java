@@ -1,32 +1,25 @@
 package com.jerry.mekextras.common.capabilities.chemical;
+import mekanism.common.capabilities.chemical.VariableCapacityChemicalTank;
 
-import com.jerry.mekextras.common.capabilities.chemical.variable.ExtraVariableCapacityChemicalTank;
-import com.jerry.mekextras.common.tile.TileEntityLargeCapRadioactiveWasteBarrel;
-
-import mekanism.api.Action;
+import java.util.Objects;
 import mekanism.api.AutomationType;
 import mekanism.api.IContentsListener;
-import mekanism.api.annotations.NothingNullByDefault;
 import mekanism.api.chemical.Chemical;
-import mekanism.api.chemical.ChemicalStack;
-import mekanism.api.chemical.IChemicalHandler;
-import mekanism.api.chemical.IChemicalTank;
+import mekanism.api.chemical.ChemicalResource;
 import mekanism.api.chemical.attribute.ChemicalAttributeValidator;
 import mekanism.api.datamaps.chemical.attribute.ChemicalRadioactivity;
 import mekanism.api.datamaps.chemical.attribute.IChemicalAttribute;
 import mekanism.api.functions.ConstantPredicates;
+import mekanism.common.config.MekanismConfig;
+import com.jerry.mekextras.common.tile.TileEntityLargeCapRadioactiveWasteBarrel;
 import mekanism.common.util.WorldUtils;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
+import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Range;
 
-import org.jetbrains.annotations.Nullable;
+public class StackedLargeCapWasteBarrel extends VariableCapacityChemicalTank {
 
-import java.util.Objects;
-
-@NothingNullByDefault
-public class StackedLargeCapWasteBarrel extends ExtraVariableCapacityChemicalTank implements IChemicalHandler, IChemicalTank {
-
-    @SuppressWarnings("removal")
-    private static final ChemicalAttributeValidator ATTRIBUTE_VALIDATOR = new ChemicalAttributeValidator.ChemicalAttributeValidatorLegacyAdapter() {
-
+    private static final ChemicalAttributeValidator ATTRIBUTE_VALIDATOR = new ChemicalAttributeValidator() {
         @Override
         public boolean validate(IChemicalAttribute attr) {
             return attr instanceof ChemicalRadioactivity;
@@ -46,40 +39,24 @@ public class StackedLargeCapWasteBarrel extends ExtraVariableCapacityChemicalTan
     private final TileEntityLargeCapRadioactiveWasteBarrel tile;
 
     protected StackedLargeCapWasteBarrel(TileEntityLargeCapRadioactiveWasteBarrel tile, @Nullable IContentsListener listener) {
-        super(tile.getTier().getStorage(), ConstantPredicates.alwaysTrueBi(), ConstantPredicates.alwaysTrueBi(), ConstantPredicates.alwaysTrue(), ATTRIBUTE_VALIDATOR, listener);
+        super(() -> tile.getTier().getStorage(), ConstantPredicates.alwaysTrueBi(), ConstantPredicates.alwaysTrueBi(),
+              ConstantPredicates.alwaysTrue(), null, null, ATTRIBUTE_VALIDATOR, listener);
         this.tile = tile;
     }
 
     @Override
-    public ChemicalStack insert(ChemicalStack stack, Action action, AutomationType automationType) {
-        ChemicalStack remainder = super.insert(stack, action, automationType);
-        if (!remainder.isEmpty()) {
-            // If we have any leftover check if we can send it to the tank that is above
-            TileEntityLargeCapRadioactiveWasteBarrel tileAbove = WorldUtils.getTileEntity(TileEntityLargeCapRadioactiveWasteBarrel.class, tile.getLevel(), tile.getBlockPos().above());
+    @Range(from = 0, to = Integer.MAX_VALUE)
+    public int insert(ChemicalResource resource, @Range(from = 0, to = Integer.MAX_VALUE) int amount, TransactionContext transaction, AutomationType automationType) {
+        int inserted = super.insert(resource, amount, transaction, automationType);
+        //Ensure we have the same type of gas stored as we failed to insert, in which case we want to try to insert to the one above
+        if (inserted < amount && resource().equals(resource)) {
+            //If we have any leftover check if we can send it to the tank that is above
+            TileEntityLargeCapRadioactiveWasteBarrel tileAbove = WorldUtils.getTileEntity(TileEntityLargeCapRadioactiveWasteBarrel.class, this.tile.getLevel(), this.tile.getBlockPos().above());
             if (tileAbove != null) {
-                // Note: We do external so that it is not limited by the internal rate limits
-                remainder = tileAbove.getGasTank().insert(remainder, action, AutomationType.EXTERNAL);
+                //Note: We do external so that it is not limited by the internal rate limits
+                inserted += tileAbove.getChemicalTank().insert(resource, amount - inserted, transaction, AutomationType.EXTERNAL);
             }
         }
-        return remainder;
-    }
-
-    @Override
-    public long growStack(long amount, Action action) {
-        long grownAmount = super.growStack(amount, action);
-        if (amount > 0 && grownAmount < amount) {
-            // If we grew our stack less than we tried to, and we were actually growing and not shrinking it
-            // try inserting into above tiles
-            if (!tile.getActive()) {
-                TileEntityLargeCapRadioactiveWasteBarrel tileAbove = WorldUtils.getTileEntity(TileEntityLargeCapRadioactiveWasteBarrel.class, tile.getLevel(), tile.getBlockPos().above());
-                if (tileAbove != null) {
-                    long leftOverToInsert = amount - grownAmount;
-                    // Note: We do external so that it is not limited by the internal rate limits
-                    ChemicalStack remainder = tileAbove.getGasTank().insert(stored.copyWithAmount(leftOverToInsert), action, AutomationType.EXTERNAL);
-                    grownAmount += leftOverToInsert - remainder.getAmount();
-                }
-            }
-        }
-        return grownAmount;
+        return inserted;
     }
 }

@@ -29,6 +29,9 @@ public enum FTTier implements IAdvancedTier {
         return advancedTier;
     }
 
+    public long getCapacity() { return getStorage(); }
+    public int getTransferRate() { return com.google.common.primitives.Ints.saturatedCast(getOutput()); }
+
     public int getStorage() {
         return storageReference == null ? getAdvanceStorage() : storageReference.getOrDefault();
     }

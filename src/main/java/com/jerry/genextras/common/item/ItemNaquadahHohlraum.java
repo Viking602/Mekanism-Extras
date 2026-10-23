@@ -1,71 +1,69 @@
 package com.jerry.genextras.common.item;
 
-import com.jerry.mekextras.common.registries.ExtraChemicals;
-
-import mekanism.api.chemical.ChemicalStack;
-import mekanism.api.chemical.IChemicalHandler;
+import java.util.function.Consumer;
+import mekanism.api.chemical.ChemicalResource;
 import mekanism.api.text.EnumColor;
 import mekanism.common.MekanismLang;
+import mekanism.common.component.containers.type.ContainerType;
 import mekanism.common.capabilities.Capabilities;
-import mekanism.common.registration.impl.CreativeTabDeferredRegister;
-import mekanism.common.util.ChemicalUtil;
+import mekanism.common.registration.impl.CreativeTabDeferredRegister.ICustomCreativeTabContents;
 import mekanism.common.util.StorageUtils;
 import mekanism.generators.common.GeneratorsLang;
-
+import com.jerry.mekextras.common.registries.ExtraChemicals;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.neoforged.neoforge.transfer.ResourceHandler;
 
-import org.jetbrains.annotations.NotNull;
-
-import java.util.List;
-import java.util.function.Consumer;
-
-public class ItemNaquadahHohlraum extends Item implements CreativeTabDeferredRegister.ICustomCreativeTabContents {
+public class ItemNaquadahHohlraum extends Item implements ICustomCreativeTabContents {
 
     public ItemNaquadahHohlraum(Properties properties) {
         super(properties.stacksTo(1));
     }
 
     @Override
-    public void appendHoverText(@NotNull ItemStack stack, @NotNull Item.TooltipContext context, @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
-        IChemicalHandler gasHandlerItem = Capabilities.CHEMICAL.getCapability(stack);
-        if (gasHandlerItem != null && gasHandlerItem.getChemicalTanks() > 0) {
-            // Validate something didn't go terribly wrong, and we actually do have the tank we expect to have
-            ChemicalStack storedGas = gasHandlerItem.getChemicalInTank(0);
-            if (!storedGas.isEmpty()) {
-                tooltip.add(MekanismLang.STORED.translate(storedGas, storedGas.getAmount()));
-                if (storedGas.getAmount() == gasHandlerItem.getChemicalTankCapacity(0)) {
-                    tooltip.add(GeneratorsLang.READY_FOR_REACTION.translateColored(EnumColor.DARK_GREEN));
+    @Deprecated
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay, Consumer<Component> tooltipAdder, TooltipFlag flag) {
+        super.appendHoverText(stack, context, tooltipDisplay, tooltipAdder, flag);
+        ResourceHandler<ChemicalResource> handler = Capabilities.CHEMICAL.getQueryOnlyCapability(stack);
+        if (handler != null && handler.size() > 0) {
+            //Validate something didn't go terribly wrong, and we actually do have the tank we expect to have
+            ChemicalResource storedChemical = handler.getResource(0);
+            if (!storedChemical.isEmpty()) {
+                long storedAmount = handler.getAmountAsLong(0);
+                tooltipAdder.accept(MekanismLang.STORED.translate(storedChemical, storedAmount));
+                if (storedAmount == handler.getCapacityAsLong(0, storedChemical)) {
+                    tooltipAdder.accept(GeneratorsLang.READY_FOR_REACTION.translateColored(EnumColor.DARK_GREEN));
                 } else {
-                    tooltip.add(GeneratorsLang.INSUFFICIENT_FUEL.translateColored(EnumColor.DARK_RED));
+                    tooltipAdder.accept(GeneratorsLang.INSUFFICIENT_FUEL.translateColored(EnumColor.DARK_RED));
                 }
                 return;
             }
         }
-        tooltip.add(MekanismLang.NO_CHEMICAL.translate());
-        tooltip.add(GeneratorsLang.INSUFFICIENT_FUEL.translateColored(EnumColor.DARK_RED));
+        tooltipAdder.accept(MekanismLang.NO_CHEMICAL.translate());
+        tooltipAdder.accept(GeneratorsLang.INSUFFICIENT_FUEL.translateColored(EnumColor.DARK_RED));
     }
 
     @Override
-    public boolean isBarVisible(@NotNull ItemStack stack) {
-        return true;
+    public boolean isBarVisible(ItemStack stack) {
+        return StorageUtils.isBarVisible(stack);
     }
 
     @Override
-    public int getBarWidth(@NotNull ItemStack stack) {
+    public int getBarWidth(ItemStack stack) {
         return StorageUtils.getBarWidth(stack);
     }
 
     @Override
-    public int getBarColor(@NotNull ItemStack stack) {
-        return ChemicalUtil.getRGBDurabilityForDisplay(stack);
+    public int getBarColor(ItemStack stack) {
+        return ContainerType.CHEMICAL.getRGBDurabilityForDisplay(stack);
     }
 
     @Override
     public void addItems(Holder<Item> item, Consumer<ItemStack> tabOutput) {
-        tabOutput.accept(ChemicalUtil.getFilledVariant(item, ExtraChemicals.NAQUADAH_URANIUM_FUEL));
+        tabOutput.accept(ContainerType.CHEMICAL.getFilledVariant(item, ExtraChemicals.NAQUADAH_URANIUM_FUEL, null));
     }
 }

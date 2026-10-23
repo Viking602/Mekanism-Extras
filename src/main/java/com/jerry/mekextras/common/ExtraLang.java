@@ -4,7 +4,7 @@ import com.jerry.mekextras.MekanismExtras;
 
 import mekanism.api.text.ILangEntry;
 
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 
 import org.jetbrains.annotations.NotNull;
 

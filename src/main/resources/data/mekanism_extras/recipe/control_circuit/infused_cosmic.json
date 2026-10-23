@@ -6,7 +6,7 @@
   },
   "item_input": {
     "count": 1,
-    "tag": "c:circuits/supreme"
+    "ingredient": "#c:circuits/supreme"
   },
   "output": {
     "count": 1,

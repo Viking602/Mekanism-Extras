@@ -6,7 +6,7 @@
   },
   "item_input": {
     "count": 1,
-    "tag": "c:shards/naquadah"
+    "ingredient": "#c:shards/naquadah"
   },
   "output": {
     "count": 1,

@@ -1,12 +1,8 @@
 {
   "type": "minecraft:crafting_shaped",
   "key": {
-    "A": {
-      "item": "mekanism_extras:alloy_radiance"
-    },
-    "P": {
-      "item": "mekanism:ultimate_pressurized_tube"
-    }
+    "A": "mekanism_extras:alloy_radiance",
+    "P": "mekanism:ultimate_pressurized_tube"
   },
   "pattern": [
     "PPP",

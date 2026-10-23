@@ -1,12 +1,8 @@
 {
   "type": "minecraft:crafting_shaped",
   "key": {
-    "#": {
-      "tag": "c:ingots/naquadah"
-    },
-    "P": {
-      "item": "mekanism_extras:ingot_naquadah"
-    }
+    "#": "#c:ingots/naquadah",
+    "P": "mekanism_extras:ingot_naquadah"
   },
   "pattern": [
     "###",

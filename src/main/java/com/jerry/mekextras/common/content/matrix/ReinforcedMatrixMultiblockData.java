@@ -1,37 +1,36 @@
 package com.jerry.mekextras.common.content.matrix;
 
-import com.jerry.mekextras.common.tile.multiblock.TileEntityExtraInductionCell;
-import com.jerry.mekextras.common.tile.multiblock.TileEntityExtraInductionProvider;
-import com.jerry.mekextras.common.tile.multiblock.TileEntityReinforcedInductionCasing;
-import com.jerry.mekextras.common.tile.multiblock.TileEntityReinforcedInductionPort;
-
-import mekanism.common.integration.computer.SpecialComputerMethodWrapper;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import mekanism.common.integration.computer.SpecialComputerMethodWrapper.ComputerIInventorySlotWrapper;
 import mekanism.common.integration.computer.annotation.ComputerMethod;
 import mekanism.common.integration.computer.annotation.WrappingComputerMethod;
 import mekanism.common.inventory.container.slot.SlotOverlay;
 import mekanism.common.inventory.container.sync.dynamic.ContainerSync;
 import mekanism.common.inventory.slot.EnergyInventorySlot;
-import mekanism.common.lib.multiblock.IValveHandler;
+import mekanism.common.lib.multiblock.IValveHandler.ValveData;
 import mekanism.common.lib.multiblock.MultiblockCache;
+import mekanism.common.lib.multiblock.MultiblockCache.CacheSubstance;
 import mekanism.common.lib.multiblock.MultiblockData;
 import mekanism.common.lib.multiblock.Structure;
-import mekanism.common.util.CableUtils;
+import com.jerry.mekextras.common.tile.multiblock.TileEntityReinforcedInductionCasing;
+import com.jerry.mekextras.common.tile.multiblock.TileEntityExtraInductionCell;
+import com.jerry.mekextras.common.tile.multiblock.TileEntityReinforcedInductionPort;
+import com.jerry.mekextras.common.tile.multiblock.TileEntityExtraInductionProvider;
 import mekanism.common.util.MekanismUtils;
 import mekanism.common.util.WorldUtils;
-
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
-
-import org.jetbrains.annotations.NotNull;
-
-import java.util.ArrayList;
-import java.util.List;
+import net.minecraft.world.level.LevelReader;
+import net.neoforged.neoforge.transfer.energy.EnergyHandler;
 
 public class ReinforcedMatrixMultiblockData extends MultiblockData {
 
     public static final String STATS_TAB = "stats";
 
-    private final List<EnergyOutputTarget> energyOutputTargets = new ArrayList<>();
-    @NotNull
+    private final List<CapabilityOutputTarget<EnergyHandler>> energyOutputTargets = new ArrayList<>();
     private final ReinforcedMatrixEnergyContainer energyContainer;
 
     @ContainerSync(getter = "getLastOutput")
@@ -53,16 +52,14 @@ public class ReinforcedMatrixMultiblockData extends MultiblockData {
     @ContainerSync(tags = STATS_TAB, getter = "getCellCount")
     private int clientCells;
 
-    @NotNull
-    @WrappingComputerMethod(wrapper = SpecialComputerMethodWrapper.ComputerIInventorySlotWrapper.class, methodNames = "getInputItem", docPlaceholder = "input slot")
+    @WrappingComputerMethod(wrapper = ComputerIInventorySlotWrapper.class, methodNames = "getInputItem", docPlaceholder = "input slot")
     final EnergyInventorySlot energyInputSlot;
-    @NotNull
-    @WrappingComputerMethod(wrapper = SpecialComputerMethodWrapper.ComputerIInventorySlotWrapper.class, methodNames = "getOutputItem", docPlaceholder = "output slot")
+    @WrappingComputerMethod(wrapper = ComputerIInventorySlotWrapper.class, methodNames = "getOutputItem", docPlaceholder = "output slot")
     final EnergyInventorySlot energyOutputSlot;
 
     public ReinforcedMatrixMultiblockData(TileEntityReinforcedInductionCasing tile) {
         super(tile);
-        energyContainers.add(energyContainer = new ReinforcedMatrixEnergyContainer(this));
+        energyContainer = new ReinforcedMatrixEnergyContainer(this);
         inventorySlots.add(energyInputSlot = EnergyInventorySlot.drain(energyContainer, this, 146, 21));
         inventorySlots.add(energyOutputSlot = EnergyInventorySlot.fillOrConvert(energyContainer, tile::getLevel, this, 146, 51));
         energyInputSlot.setSlotOverlay(SlotOverlay.PLUS);
@@ -75,8 +72,8 @@ public class ReinforcedMatrixMultiblockData extends MultiblockData {
     }
 
     @Override
-    protected boolean shouldCap(MultiblockCache.CacheSubstance<?, ?> type) {
-        return type != MultiblockCache.CacheSubstance.ENERGY;
+    protected boolean shouldCache(CacheSubstance<?> type) {
+        return type != MultiblockCache.ENERGY;
     }
 
     public void addCell(TileEntityExtraInductionCell cell) {
@@ -87,28 +84,21 @@ public class ReinforcedMatrixMultiblockData extends MultiblockData {
         energyContainer.addProvider(provider.getBlockPos(), provider);
     }
 
-    @NotNull
-    public ReinforcedMatrixEnergyContainer getEnergyContainer() {
+    @Override
+    public ReinforcedMatrixEnergyContainer energyContainer() {
         return energyContainer;
     }
 
+    public ReinforcedMatrixEnergyContainer getEnergyContainer() { return energyContainer; }
+
     public long getEnergy() {
-        return isRemote() ? clientEnergy : energyContainer.getEnergy();
+        return isRemote() ? clientEnergy : energyContainer.getAmountAsLong();
     }
 
     @Override
-    public boolean tick(Level world) {
+    public boolean tick(ServerLevel world) {
         boolean ret = super.tick(world);
-        energyContainer.tick();
-        // We tick the main energy container before adding/draining from the slots, so that we make sure
-        // they get first "pickings" at attempting to get or give power, without having to worry about the
-        // rate limit of the structure being used up by the ports
-        energyInputSlot.drainContainer();
-        energyOutputSlot.fillContainerOrConvert();
-        if (!energyOutputTargets.isEmpty() && !energyContainer.isEmpty()) {
-            CableUtils.emit(getActiveOutputs(energyOutputTargets), energyContainer, energyContainer.getMaxTransfer());
-        }
-        if (getLastInput() != 0L || getLastOutput() != 0L) {
+        if (energyContainer.tick(getActiveOutputs(energyOutputTargets), energyInputSlot, energyOutputSlot, null)) {
             // If the stored energy changed, update the comparator
             markDirtyComparator(world);
         }
@@ -116,7 +106,7 @@ public class ReinforcedMatrixMultiblockData extends MultiblockData {
     }
 
     @Override
-    public void remove(Level world, Structure oldStructure) {
+    public void remove(LevelReader world, Structure oldStructure) {
         energyContainer.invalidate();
         super.remove(world, oldStructure);
     }
@@ -124,16 +114,16 @@ public class ReinforcedMatrixMultiblockData extends MultiblockData {
     @Override
     protected void updateEjectors(Level world) {
         energyOutputTargets.clear();
-        for (IValveHandler.ValveData valve : valves) {
-            TileEntityReinforcedInductionPort tile = WorldUtils.getTileEntity(TileEntityReinforcedInductionPort.class, world, valve.location);
+        for (Map.Entry<BlockPos, ValveData> entry : valves.entrySet()) {
+            TileEntityReinforcedInductionPort tile = WorldUtils.getTileEntity(TileEntityReinforcedInductionPort.class, world, entry.getKey());
             if (tile != null) {
-                tile.addEnergyTargetCapability(energyOutputTargets, valve.side);
+                tile.addEnergyTargetCapability(energyOutputTargets, entry.getValue().side);
             }
         }
     }
 
     public long getStorageCap() {
-        return isRemote() ? clientMaxEnergy : energyContainer.getMaxEnergy();
+        return isRemote() ? clientMaxEnergy : energyContainer.getCapacityAsLong();
     }
 
     @ComputerMethod

@@ -1,7 +1,8 @@
 {
   "variants": {
     "": {
-      "model": "mekanism_extras:block/transmitter/large/logistical_transporter/infinite"
+      "model": "mekanism_extras:block/transmitter/large/logistical_transporter/infinite",
+      "type": "mekanism:special/transmitter"
     }
   }
 }

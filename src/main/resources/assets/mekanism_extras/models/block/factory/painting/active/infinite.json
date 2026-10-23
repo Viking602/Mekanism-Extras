@@ -13,7 +13,7 @@
       }
     },
     "front_led": {
-      "parent": "mekanism_extras:block/factory/front_led/active/ultimate"
+      "parent": "mekanism_extras:block/factory/front_led/active/infinite"
     }
   }
 }

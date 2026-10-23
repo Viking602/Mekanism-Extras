@@ -12,7 +12,7 @@ import mekanism.common.MekanismLang;
 import mekanism.common.inventory.container.tile.MekanismTileContainer;
 import mekanism.common.util.text.TextUtils;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 
@@ -33,7 +33,7 @@ public class GuiExtraChemicalTank extends GuiConfigurableTile<TileEntityExtraChe
         // Add the side holder before the slots, as it holds a couple of the slots
         addRenderableWidget(GuiSideHolder.armorHolder(this));
         super.addGuiElements();
-        addRenderableWidget(new GuiChemicalBar(this, GuiChemicalBar.getProvider(tile.getChemicalTank(), tile.getChemicalTanks(null)), 42, 16, 116, 10, true));
+        addRenderableWidget(new GuiChemicalBar(this, GuiChemicalBar.getProvider(tile.getChemicalTank(), tile.getChemicalTanks()), 42, 16, 116, 10, true));
         addRenderableWidget(new GuiInnerScreen(this, 42, 37, 118, 28, () -> {
             List<Component> ret = new ArrayList<>();
             IChemicalTank tank = tile.getChemicalTank();
@@ -41,8 +41,8 @@ public class GuiExtraChemicalTank extends GuiConfigurableTile<TileEntityExtraChe
                 ret.add(MekanismLang.CHEMICAL.translate(MekanismLang.NONE));
                 ret.add(MekanismLang.GENERIC_FRACTION.translate(0, TextUtils.format(tile.getTier().getStorage())));
             } else {
-                ret.add(MekanismLang.CHEMICAL.translate(tank.getStack()));
-                ret.add(MekanismLang.GENERIC_FRACTION.translate(TextUtils.format(tank.getStored()), TextUtils.format(tank.getCapacity())));
+                ret.add(MekanismLang.CHEMICAL.translate(tank.resource()));
+                ret.add(MekanismLang.GENERIC_FRACTION.translate(TextUtils.format(tank.amountAsLong()), TextUtils.format(tank.capacityAsLong(tank.resource()))));
             }
             return ret;
         }));
@@ -50,7 +50,7 @@ public class GuiExtraChemicalTank extends GuiConfigurableTile<TileEntityExtraChe
     }
 
     @Override
-    protected void drawForegroundText(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY) {
+    protected void drawForegroundText(@NotNull GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
         renderTitleText(guiGraphics);
         renderInventoryText(guiGraphics);
         super.drawForegroundText(guiGraphics, mouseX, mouseY);

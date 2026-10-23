@@ -41,8 +41,8 @@ import mekanism.client.render.RenderPropertiesProvider;
 import mekanism.client.render.item.TransmitterTypeDecorator;
 import mekanism.common.util.WorldUtils;
 
-import net.minecraft.client.renderer.ItemBlockRenderTypes;
-import net.minecraft.client.renderer.RenderType;
+
+import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.core.Holder;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.material.Fluid;
@@ -60,16 +60,7 @@ public class ClientRegistration {
     @SubscribeEvent
     public static void init(FMLClientSetupEvent event) {
         NeoForge.EVENT_BUS.register(new ClientTick());
-        event.enqueueWork(() -> {
-            for (Holder<Fluid> fluid : ExtraFluids.EXTRA_FLUIDS.getFluidEntries()) {
-                ItemBlockRenderTypes.setRenderLayer(fluid.value(), RenderType.translucent());
-            }
-            if (MekanismExtras.hooks.mekanismGenerators.isLoaded()) {
-                for (Holder<Fluid> fluid : GenExtraFluids.GEN_EXTRA_FLUIDS.getFluidEntries()) {
-                    ItemBlockRenderTypes.setRenderLayer(fluid.value(), RenderType.translucent());
-                }
-            }
-        });
+
     }
 
     @SubscribeEvent
@@ -98,15 +89,9 @@ public class ClientRegistration {
         }
     }
 
-    @SubscribeEvent
-    public static void registerLayer(EntityRenderersEvent.RegisterLayerDefinitions event) {
-        event.registerLayerDefinition(ColorModelEnergyCore.CORE_LAYER, ColorModelEnergyCore::createLayerDefinition);
-    }
 
-    @SubscribeEvent
-    public static void registerClientReloadListeners(RegisterClientReloadListenersEvent event) {
-        ClientRegistrationUtil.registerClientReloadListeners(event, RenderExtraEnergyCubeItem.EXTRA_RENDERER);
-    }
+
+
 
     @SubscribeEvent
     public static void registerScreens(RegisterMenuScreensEvent event) {
@@ -138,71 +123,39 @@ public class ClientRegistration {
     }
 
     @SubscribeEvent
-    public static void registerModelLoaders(ModelEvent.RegisterGeometryLoaders event) {
+    public static void registerModelLoaders(ModelEvent.RegisterLoaders event) {
         event.register(MekanismExtras.rl("energy_cube"), ExtraEnergyCubeModelLoader.INSTANCE);
     }
 
     @SubscribeEvent
-    public static void registerBlockColorHandlers(RegisterColorHandlersEvent.Block event) {
-        ClientRegistrationUtil.registerBlockColorHandler(event, (state, world, pos, tintIndex) -> {
-            if (tintIndex == 1) {
-                FTTier tier = ExtraAttribute.getAdvancedTier(state.getBlock(), FTTier.class);
-                if (tier != null) {
-                    return TierColor.getPackedColor(tier);
-                }
-            }
-            return -1;
-        }, ExtraBlocks.ABSOLUTE_FLUID_TANK, ExtraBlocks.SUPREME_FLUID_TANK, ExtraBlocks.COSMIC_FLUID_TANK, ExtraBlocks.INFINITE_FLUID_TANK);
-
-        ClientRegistrationUtil.registerBlockColorHandler(event, (state, world, pos, index) -> {
-            if (index == 1) {
-                ECTier tier = ExtraAttribute.getAdvancedTier(state.getBlock(), ECTier.class);
-                if (tier != null) {
-                    return TierColor.getPackedColor(tier);
-                }
-            }
-            return -1;
-        }, ExtraBlocks.ABSOLUTE_ENERGY_CUBE, ExtraBlocks.SUPREME_ENERGY_CUBE, ExtraBlocks.COSMIC_ENERGY_CUBE,
-                ExtraBlocks.INFINITE_ENERGY_CUBE);
-
-        ClientRegistrationUtil.registerBlockColorHandler(event, (state, world, pos, tintIndex) -> {
-            if (tintIndex == 1 && pos != null) {
-                TileEntityExtraLogisticalTransporter transporter = WorldUtils.getTileEntity(TileEntityExtraLogisticalTransporter.class, world, pos);
-                if (transporter != null) {
-                    EnumColor renderColor = transporter.getTransmitter().getColor();
-                    if (renderColor != null) {
-                        return renderColor.getPackedColor();
-                    }
-                }
-            }
-            return -1;
-        }, ExtraBlocks.ABSOLUTE_LOGISTICAL_TRANSPORTER, ExtraBlocks.SUPREME_LOGISTICAL_TRANSPORTER, ExtraBlocks.COSMIC_LOGISTICAL_TRANSPORTER,
-                ExtraBlocks.INFINITE_LOGISTICAL_TRANSPORTER);
+    public static void registerModels(RegisterBlockStateModels event) {
+        event.registerModel(com.jerry.mekextras.client.model.energycube.ExtraEnergyCubeBakedModel.Unbaked.ID,
+            com.jerry.mekextras.client.model.energycube.ExtraEnergyCubeBakedModel.Unbaked.MAP_CODEC);
     }
-
     @SubscribeEvent
-    public static void registerItemColorHandlers(RegisterColorHandlersEvent.Item event) {
-        ClientRegistrationUtil.registerBucketColorHandler(event, ExtraFluids.EXTRA_FLUIDS);
-        if (MekanismExtras.hooks.mekanismGenerators.isLoaded()) {
-            ClientRegistrationUtil.registerBucketColorHandler(event, GenExtraFluids.GEN_EXTRA_FLUIDS);
-        }
-        // fluid tank
-        ClientRegistrationUtil.registerItemColorHandler(event, (stack, tintIndex) -> {
-            Item item = stack.getItem();
-            if (tintIndex == 1 && item instanceof ItemBlockExtraFluidTank tank) {
-                return TierColor.getPackedColor(tank.getAdvancedTier());
-            }
-            return -1;
-        }, ExtraBlocks.ABSOLUTE_FLUID_TANK, ExtraBlocks.SUPREME_FLUID_TANK, ExtraBlocks.COSMIC_FLUID_TANK, ExtraBlocks.INFINITE_FLUID_TANK);
-
-        // energy cube
-        ClientRegistrationUtil.registerItemColorHandler(event, (stack, tintIndex) -> {
-            Item item = stack.getItem();
-            if (tintIndex == 1 && item instanceof ItemBlockExtraEnergyCube cube) {
-                return TierColor.getPackedColor(cube.getAdvancedTier());
-            }
-            return -1;
-        }, ExtraBlocks.ABSOLUTE_ENERGY_CUBE, ExtraBlocks.SUPREME_ENERGY_CUBE, ExtraBlocks.COSMIC_ENERGY_CUBE, ExtraBlocks.INFINITE_ENERGY_CUBE);
+    public static void registerSpecialRenderers(RegisterSpecialModelRendererEvent event) {
+        event.register(MekanismExtras.rl("energy_cube"), RenderExtraEnergyCubeItem.Unbaked.MAP_CODEC);
+        event.register(MekanismExtras.rl("fluid_tank"), RenderExtraFluidTankItem.Unbaked.MAP_CODEC);
+    }
+    @SubscribeEvent
+    public static void registerFluidModels(RegisterFluidModelsEvent event) {
+        ClientRegistrationUtil.registerFluidModels(event, ExtraFluids.EXTRA_FLUIDS);
+        if(MekanismExtras.hooks.mekanismGenerators.isLoaded()) ClientRegistrationUtil.registerFluidModels(event, GenExtraFluids.GEN_EXTRA_FLUIDS);
+    }
+    @SubscribeEvent
+    public static void registerItemTintSources(RegisterColorHandlersEvent.ItemTintSources event) {
+        event.register(MekanismExtras.rl("tier"), com.jerry.mekextras.client.model.ExtraTierTint.MAP_CODEC);
+    }
+    @SubscribeEvent
+    public static void registerBlockColorHandlers(RegisterColorHandlersEvent.BlockTintSources event) {
+        net.minecraft.client.color.block.BlockTintSource tierTint = state -> {
+            com.jerry.mekextras.api.tier.IAdvancedTier tier = ExtraAttribute.getAdvancedTier(state.getBlock(), com.jerry.mekextras.api.tier.IAdvancedTier.class);
+            return tier == null ? -1 : TierColor.getPackedColor(tier);
+        };
+        var tierTints = java.util.List.of((net.minecraft.client.color.block.BlockTintSource) state -> -1, tierTint);
+        ClientRegistrationUtil.registerBlockColorHandler(event,tierTints, ExtraBlocks.ABSOLUTE_FLUID_TANK, ExtraBlocks.SUPREME_FLUID_TANK, ExtraBlocks.COSMIC_FLUID_TANK, ExtraBlocks.INFINITE_FLUID_TANK, ExtraBlocks.ABSOLUTE_ENERGY_CUBE, ExtraBlocks.SUPREME_ENERGY_CUBE, ExtraBlocks.COSMIC_ENERGY_CUBE, ExtraBlocks.INFINITE_ENERGY_CUBE);
+        ClientRegistrationUtil.registerBlockColorHandler(event,java.util.List.of((net.minecraft.client.color.block.BlockTintSource) state -> -1,
+            com.jerry.mekextras.client.model.ExtraTransporterTint.INSTANCE), ExtraBlocks.ABSOLUTE_LOGISTICAL_TRANSPORTER, ExtraBlocks.SUPREME_LOGISTICAL_TRANSPORTER, ExtraBlocks.COSMIC_LOGISTICAL_TRANSPORTER, ExtraBlocks.INFINITE_LOGISTICAL_TRANSPORTER);
     }
 
     @SubscribeEvent
@@ -215,10 +168,6 @@ public class ClientRegistration {
 
     @SubscribeEvent
     public static void registerClientExtensions(RegisterClientExtensionsEvent event) {
-        ClientRegistrationUtil.registerItemExtensions(event, new RenderPropertiesProvider.MekRenderProperties(RenderExtraEnergyCubeItem.EXTRA_RENDERER), ExtraBlocks.ABSOLUTE_ENERGY_CUBE,
-                ExtraBlocks.SUPREME_ENERGY_CUBE, ExtraBlocks.COSMIC_ENERGY_CUBE, ExtraBlocks.INFINITE_ENERGY_CUBE);
-        ClientRegistrationUtil.registerItemExtensions(event, new RenderPropertiesProvider.MekRenderProperties(RenderExtraFluidTankItem.EXTRA_RENDERER), ExtraBlocks.ABSOLUTE_FLUID_TANK,
-                ExtraBlocks.SUPREME_FLUID_TANK, ExtraBlocks.COSMIC_FLUID_TANK, ExtraBlocks.INFINITE_FLUID_TANK);
         ClientRegistrationUtil.registerBlockExtensions(event, ExtraBlocks.EXTRA_BLOCKS);
         ClientRegistrationUtil.registerFluidExtensions(event, ExtraFluids.EXTRA_FLUIDS);
         if (MekanismExtras.hooks.mekanismGenerators.isLoaded()) {

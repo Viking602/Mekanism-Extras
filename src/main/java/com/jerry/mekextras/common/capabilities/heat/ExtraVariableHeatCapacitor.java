@@ -1,7 +1,7 @@
 package com.jerry.mekextras.common.capabilities.heat;
 
 import mekanism.api.IContentsListener;
-import mekanism.api.annotations.NothingNullByDefault;
+import org.jspecify.annotations.NullMarked;
 import mekanism.api.heat.HeatAPI;
 import mekanism.common.capabilities.heat.BasicHeatCapacitor;
 
@@ -9,7 +9,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.function.DoubleSupplier;
 
-@NothingNullByDefault
+@NullMarked
 public class ExtraVariableHeatCapacitor extends BasicHeatCapacitor {
 
     private final double conductionCoefficientSupplier;

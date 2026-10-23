@@ -1,11 +1,19 @@
 package com.jerry.mekextras.common.integration.mekaf.tile.factory;
+import com.jerry.mekextras.api.ExtraUpgrade;
+import com.jerry.mekextras.api.mixin.IMixinMachineEnergyContainer;
+import com.jerry.mekextras.common.block.attribute.ExtraAttribute;
+import com.jerry.mekextras.common.util.ExtraUpgradeUtils;
 
 import com.jerry.mekextras.common.integration.mekaf.tile.factory.base.TileEntityExtraChemicalToChemicalFactory;
+import com.jerry.mekaf.common.upgrade.FluidChemicalToChemicalUpgradeData;
 
 import mekanism.api.IContentsListener;
 import mekanism.api.Upgrade;
-import mekanism.api.chemical.ChemicalStack;
+import mekanism.api.chemical.Chemical;
+import mekanism.api.chemical.ChemicalResource;
 import mekanism.api.chemical.IChemicalTank;
+import mekanism.api.fluid.IFluidTank;
+import mekanism.api.inventory.IInventorySlot;
 import mekanism.api.math.MathUtils;
 import mekanism.api.recipes.FluidChemicalToChemicalRecipe;
 import mekanism.api.recipes.cache.CachedRecipe;
@@ -17,22 +25,23 @@ import mekanism.client.recipe_viewer.type.IRecipeViewerRecipeType;
 import mekanism.client.recipe_viewer.type.RecipeViewerRecipeType;
 import mekanism.common.Mekanism;
 import mekanism.common.capabilities.fluid.BasicFluidTank;
-import mekanism.common.capabilities.holder.fluid.FluidTankHelper;
-import mekanism.common.capabilities.holder.fluid.IFluidTankHolder;
-import mekanism.common.capabilities.holder.slot.InventorySlotHelper;
+import mekanism.common.capabilities.holder.container.IContainerHolder;
+import mekanism.common.capabilities.holder.container.MekContainerHelper;
+import mekanism.common.integration.computer.SpecialComputerMethodWrapper.ComputerFluidTankWrapper;
+import mekanism.common.integration.computer.SpecialComputerMethodWrapper.ComputerIInventorySlotWrapper;
+import mekanism.common.integration.computer.annotation.WrappingComputerMethod;
 import mekanism.common.inventory.container.slot.SlotOverlay;
 import mekanism.common.inventory.slot.FluidInventorySlot;
-import mekanism.common.inventory.slot.OutputInventorySlot;
+import com.jerry.mekextras.common.integration.mekaf.inventory.slot.ExtraAdvancedFactoryOutputInventorySlot;
 import mekanism.common.lib.transmitter.TransmissionType;
 import mekanism.common.recipe.IMekanismRecipeTypeProvider;
 import mekanism.common.recipe.MekanismRecipeType;
 import mekanism.common.recipe.lookup.IDoubleRecipeLookupHandler.FluidChemicalRecipeLookupHandler;
-import mekanism.common.recipe.lookup.cache.DoubleInputRecipeCache.CheckRecipeType;
+import mekanism.common.recipe.lookup.cache.DoubleInputRecipeCache;
 import mekanism.common.recipe.lookup.cache.InputRecipeCache;
-import mekanism.common.tile.component.TileComponentEjector;
+import com.jerry.mekextras.common.tier.ExtraFactoryTier;
 import mekanism.common.tile.component.config.ConfigInfo;
 import mekanism.common.tile.component.config.DataType;
-import mekanism.common.tile.component.config.slot.ChemicalSlotInfo;
 import mekanism.common.tile.component.config.slot.InventorySlotInfo;
 import mekanism.common.tile.interfaces.IHasDumpButton;
 import mekanism.common.upgrade.IUpgradeData;
@@ -44,19 +53,20 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 
-import com.jerry.mekaf.common.content.blocktype.AdvancedFactoryType;
-import com.jerry.mekaf.common.upgrade.FluidChemicalToChemicalUpgradeData;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Set;
 
-public class TileEntityExtraWashingFactory extends TileEntityExtraChemicalToChemicalFactory<FluidChemicalToChemicalRecipe, AdvancedFactoryType> implements IHasDumpButton, FluidChemicalRecipeLookupHandler<FluidChemicalToChemicalRecipe> {
+public class TileEntityExtraWashingFactory extends TileEntityExtraChemicalToChemicalFactory<FluidChemicalToChemicalRecipe> implements IHasDumpButton, FluidChemicalRecipeLookupHandler<FluidChemicalToChemicalRecipe> {
 
-    protected static final CheckRecipeType<FluidStack, ChemicalStack, FluidChemicalToChemicalRecipe, ChemicalStack> OUTPUT_CHECK = (recipe, fluidInput, chemicalInput, output) -> output.isEmpty() || ChemicalStack.isSameChemical(recipe.getOutput(fluidInput, chemicalInput), output);
+    protected static final DoubleInputRecipeCache.CheckRecipeType<Fluid, FluidResource, Chemical, ChemicalResource, FluidChemicalToChemicalRecipe, ChemicalResource> OUTPUT_CHECK = (recipe, fluidInput, chemicalInput, output) -> output.isEmpty() || output.is(recipe.getOutput(fluidInput, chemicalInput).typeHolder());
     private static final List<RecipeError> TRACKED_ERROR_TYPES = List.of(
             RecipeError.NOT_ENOUGH_ENERGY,
             RecipeError.NOT_ENOUGH_ENERGY_REDUCED_RATE,
@@ -68,32 +78,30 @@ public class TileEntityExtraWashingFactory extends TileEntityExtraChemicalToChem
             RecipeError.NOT_ENOUGH_ENERGY,
             RecipeError.NOT_ENOUGH_SECONDARY_INPUT);
 
+    @WrappingComputerMethod(wrapper = ComputerFluidTankWrapper.class,
+                            methodNames = { "getFluid", "getFluidCapacity", "getFluidNeeded",
+                                    "getFluidFilledPercentage" },
+                            docPlaceholder = "fluid tank")
     public BasicFluidTank fluidTank;
 
-    private final IInputHandler<@NotNull FluidStack> fluidInputHandler;
+    private final IInputHandler<Fluid, @NotNull FluidStack> fluidInputHandler;
 
+    @WrappingComputerMethod(wrapper = ComputerIInventorySlotWrapper.class, methodNames = "getFluidItemInput", docPlaceholder = "fluid item input slot")
     FluidInventorySlot fluidSlot;
-    OutputInventorySlot fluidOutputSlot;
+    @WrappingComputerMethod(wrapper = ComputerIInventorySlotWrapper.class, methodNames = "getFluidItemOutput", docPlaceholder = "fluid item output slot")
+    mekanism.common.inventory.slot.OutputInventorySlot fluidOutputSlot;
 
-    public TileEntityExtraWashingFactory(Holder<Block> blockProvider, BlockPos pos, BlockState state, AdvancedFactoryType type) {
-        super(blockProvider, pos, state, TRACKED_ERROR_TYPES, GLOBAL_ERROR_TYPES, type);
+    public TileEntityExtraWashingFactory(Holder<Block> blockProvider, BlockPos pos, BlockState state) {
+        super(blockProvider, pos, state, TRACKED_ERROR_TYPES, GLOBAL_ERROR_TYPES);
         ConfigInfo itemConfig = configComponent.getConfig(TransmissionType.ITEM);
         if (itemConfig != null) {
             itemConfig.addSlotInfo(DataType.INPUT, new InventorySlotInfo(true, false, fluidSlot));
             itemConfig.addSlotInfo(DataType.OUTPUT, new InventorySlotInfo(false, true, fluidOutputSlot));
             itemConfig.addSlotInfo(DataType.INPUT_OUTPUT, new InventorySlotInfo(true, true, fluidSlot, fluidOutputSlot));
         }
-        ConfigInfo config = configComponent.getConfig(TransmissionType.CHEMICAL);
-        if (config != null) {
-            config.addSlotInfo(DataType.INPUT, new ChemicalSlotInfo(true, false, inputChemicalTanks));
-            List<IChemicalTank> ioTank = outputChemicalTanks;
-            ioTank.addAll(inputChemicalTanks);
-            config.addSlotInfo(DataType.INPUT_OUTPUT, new ChemicalSlotInfo(true, true, ioTank));
-        }
 
         configComponent.setupInputConfig(TransmissionType.FLUID, fluidTank);
 
-        ejectorComponent = new TileComponentEjector(this);
         ejectorComponent.setOutputData(configComponent, TransmissionType.ITEM, TransmissionType.CHEMICAL)
                 .setCanTankEject(tank -> !inputChemicalTanks.contains(tank));
 
@@ -102,17 +110,25 @@ public class TileEntityExtraWashingFactory extends TileEntityExtraChemicalToChem
 
     @NotNull
     @Override
-    protected IFluidTankHolder getInitialFluidTanks(IContentsListener listener) {
-        FluidTankHelper builder = FluidTankHelper.forSideWithConfig(this);
-        builder.addTank(fluidTank = BasicFluidTank.input(MAX_FLUID * tier.processes, this::containsRecipeA, markAllMonitorsChanged(listener)));
+    protected IContainerHolder<IFluidTank> getInitialFluidTanks(IContentsListener listener) {
+        MekContainerHelper<IFluidTank> builder = MekContainerHelper.forSideWithFluidConfig(this);
+        builder.addContainer(fluidTank = BasicFluidTank.input(MAX_FLUID * tier.processes * tier.processes,
+                (fluidType, automationType) -> containsRecipeAB(fluidType, ChemicalResource.EMPTY), this::containsRecipeA, markAllMonitorsChanged(listener)));
         return builder.build();
     }
 
     @Override
-    protected void addSlots(InventorySlotHelper builder, IContentsListener listener, IContentsListener updateSortingListener) {
-        builder.addSlot(fluidSlot = FluidInventorySlot.fill(fluidTank, listener, 214 + 38 * (tier.ordinal() + 1), 71));
-        builder.addSlot(fluidOutputSlot = OutputInventorySlot.at(listener, 214 + 38 * (tier.ordinal() + 1), 102));
+    protected void addSlots(MekContainerHelper<IInventorySlot> builder, IContentsListener listener, IContentsListener updateSortingListener) {
+        builder.addContainer(fluidSlot = FluidInventorySlot.fill(fluidTank, listener, slotX(), 71));
+        builder.addContainer(fluidOutputSlot = mekanism.common.inventory.slot.OutputInventorySlot.at(listener, slotX(), 102));
         fluidSlot.setSlotOverlay(SlotOverlay.MINUS);
+    }
+
+    private int slotX() {
+        if (isEMLoadAndTierOrdinalAboveOverLocked()) {
+            return 214 + 38 * (tier.ordinal() - 3);
+        }
+        return 248 + 38 * tier.ordinal();
     }
 
     public BasicFluidTank getFluidTankBar() {
@@ -126,35 +142,35 @@ public class TileEntityExtraWashingFactory extends TileEntityExtraChemicalToChem
 
     @Override
     protected void handleSecondaryFuel() {
-        fluidSlot.fillTank(fluidOutputSlot);
+        fluidSlot.fillTankFromSlot(fluidOutputSlot, null);
     }
 
     @Override
-    protected boolean isCachedRecipeValid(@Nullable CachedRecipe<FluidChemicalToChemicalRecipe> cached, @NotNull ChemicalStack stack) {
+    protected boolean isCachedRecipeValid(@Nullable CachedRecipe<FluidChemicalToChemicalRecipe> cached, @NotNull ChemicalResource stack) {
         if (cached != null) {
             FluidChemicalToChemicalRecipe cachedRecipe = cached.getRecipe();
-            return cachedRecipe.getChemicalInput().testType(stack) && (fluidTank.isEmpty() || cachedRecipe.getFluidInput().testType(fluidTank.getFluid()));
+            return cachedRecipe.getChemicalInput().testType(stack) && (fluidTank.isEmpty() || cachedRecipe.getFluidInput().testType(fluidTank.resource()));
         }
         return false;
     }
 
     @Override
-    protected @Nullable FluidChemicalToChemicalRecipe findRecipe(int process, @NotNull ChemicalStack fallbackInput, @NotNull IChemicalTank outputSlot) {
-        return getRecipeType().getInputCache().findTypeBasedRecipe(level, fluidTank.getFluid(), fallbackInput, outputSlot.getStack(), OUTPUT_CHECK);
+    protected @Nullable FluidChemicalToChemicalRecipe findRecipe(int process, @NotNull ChemicalResource fallbackInput, @NotNull IChemicalTank outputTank) {
+        return getRecipeType().getInputCache().findTypeBasedRecipe(level, fluidTank.resource(), fallbackInput, outputTank.resource(), OUTPUT_CHECK);
     }
 
     @Override
-    public boolean isChemicalValidForTank(@NotNull ChemicalStack stack) {
-        return containsRecipeAB(fluidTank.getFluid(), stack);
+    public boolean isChemicalValidForTank(@NotNull ChemicalResource stack) {
+        return containsRecipeAB(fluidTank.resource(), stack);
     }
 
     @Override
-    public boolean isValidInputChemical(@NotNull ChemicalStack stack) {
+    public boolean isValidInputChemical(@NotNull ChemicalResource stack) {
         return containsRecipeB(stack);
     }
 
     @Override
-    protected int getNeededInput(FluidChemicalToChemicalRecipe recipe, ChemicalStack inputStack) {
+    protected int getNeededInput(FluidChemicalToChemicalRecipe recipe, ChemicalResource inputStack) {
         return MathUtils.clampToInt(recipe.getChemicalInput().getNeededAmount(inputStack));
     }
 
@@ -175,21 +191,13 @@ public class TileEntityExtraWashingFactory extends TileEntityExtraChemicalToChem
 
     @Override
     public @NotNull CachedRecipe<FluidChemicalToChemicalRecipe> createNewCachedRecipe(@NotNull FluidChemicalToChemicalRecipe recipe, int cacheIndex) {
-        return TwoInputCachedRecipe.fluidChemicalToChemical(recipe, recheckAllRecipeErrors[cacheIndex], fluidInputHandler, chemicalInputHandlers[cacheIndex], chemicalOutputHandlers[cacheIndex])
+        return new TwoInputCachedRecipe<>(recipe, recheckAllRecipeErrors[cacheIndex], fluidInputHandler, chemicalInputHandlers[cacheIndex], chemicalOutputHandlers[cacheIndex])
                 .setErrorsChanged(errors -> errorTracker.onErrorsChanged(errors, cacheIndex))
                 .setCanHolderFunction(this::canFunction)
                 .setActive(active -> setActiveState(active, cacheIndex))
                 .setEnergyRequirements(energyContainer::getEnergyPerTick, energyContainer)
                 .setBaselineMaxOperations(() -> baselineMaxOperations)
                 .setOnFinish(this::markForSave);
-    }
-
-    @Override
-    public void recalculateUpgrades(Upgrade upgrade) {
-        super.recalculateUpgrades(upgrade);
-        if (upgrade == Upgrade.SPEED) {
-            baselineMaxOperations = (int) Math.pow(2, upgradeComponent.getUpgrades(Upgrade.SPEED));
-        }
     }
 
     // 更改加速升级的显示的，默认是10x，气体工厂是256x，当然只有速度升级需要更改
@@ -200,25 +208,25 @@ public class TileEntityExtraWashingFactory extends TileEntityExtraChemicalToChem
     }
 
     @Override
-    public void parseUpgradeData(HolderLookup.Provider provider, @NotNull IUpgradeData upgradeData) {
+    public void parseUpgradeData(@NotNull IUpgradeData upgradeData, HolderLookup.Provider provider, TransactionContext transaction) {
         if (upgradeData instanceof FluidChemicalToChemicalUpgradeData data) {
-            super.parseUpgradeData(provider, upgradeData);
-            fluidTank.deserializeNBT(provider, data.inputTank.serializeNBT(provider));
-            fluidSlot.deserializeNBT(provider, data.fluidInputSlot.serializeNBT(provider));
-            fluidOutputSlot.deserializeNBT(provider, data.fluidOutputSlot.serializeNBT(provider));
+            super.parseUpgradeData(upgradeData, provider, transaction);
+            fluidTank.copyContents(data.inputTank, transaction);
+            fluidSlot.copyContents(data.fluidInputSlot, transaction);
+            fluidOutputSlot.copyContents(data.fluidOutputSlot, transaction);
         } else {
             Mekanism.logger.warn("Unhandled upgrade data.", new Throwable());
         }
     }
 
     @Override
-    public @Nullable IUpgradeData getUpgradeData(HolderLookup.Provider provider) {
+    public @Nullable FluidChemicalToChemicalUpgradeData getUpgradeData(HolderLookup.Provider provider) {
         return new FluidChemicalToChemicalUpgradeData(provider, redstone, getControlType(), getEnergyContainer(), progress, null,
-                energySlot, fluidSlot, fluidOutputSlot, inputChemicalTanks, fluidTank, outputChemicalTanks, isSorting(), getComponents());
+                energySlot, fluidSlot, fluidOutputSlot, inputChemicalTanks, fluidTank, outputChemicalTanks, isSorting(), getComponents(), problemPath());
     }
 
     @Override
     public void dump() {
-        fluidTank.setStack(FluidStack.EMPTY);
+        fluidTank.setContents(FluidResource.EMPTY, 0, null);
     }
 }

@@ -1,7 +1,8 @@
 {
   "variants": {
     "": {
-      "model": "mekanism_extras:block/transmitter/large/logistical_transporter/cosmic"
+      "model": "mekanism_extras:block/transmitter/large/logistical_transporter/cosmic",
+      "type": "mekanism:special/transmitter"
     }
   }
 }

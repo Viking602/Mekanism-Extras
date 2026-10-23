@@ -13,21 +13,21 @@ import java.util.function.UnaryOperator;
 
 public class BlockExtraAdvancedFactoryMachine<TILE extends TileEntityMekanism, MACHINE extends ExtraFactoryMachine<TILE>> extends BlockTile<TILE, MACHINE> {
 
-    public BlockExtraAdvancedFactoryMachine(MACHINE machine, UnaryOperator<Properties> propertiesModifier) {
-        super(machine, propertiesModifier);
+    public BlockExtraAdvancedFactoryMachine(MACHINE machine, Properties properties) {
+        super(machine, properties);
     }
 
     public static class MoreMachineBlockAdvancedFactoryMachineModel<TILE extends TileEntityMekanism, MACHINE extends ExtraFactoryMachine<TILE>> extends BlockExtraAdvancedFactoryMachine<TILE, MACHINE> implements IStateFluidLoggable {
 
-        public MoreMachineBlockAdvancedFactoryMachineModel(MACHINE machineType, UnaryOperator<Properties> propertiesModifier) {
-            super(machineType, propertiesModifier);
+        public MoreMachineBlockAdvancedFactoryMachineModel(MACHINE machineType, Properties properties) {
+            super(machineType, properties);
         }
     }
 
-    public static class BlockExtraAdvancedFactory<TILE extends TileEntityExtraAdvancedFactoryBase<?, ?>> extends MoreMachineBlockAdvancedFactoryMachineModel<TILE, ExtraAdvancedFactory<TILE>> {
+    public static class BlockExtraAdvancedFactory<TILE extends TileEntityExtraAdvancedFactoryBase<?>> extends MoreMachineBlockAdvancedFactoryMachineModel<TILE, ExtraAdvancedFactory<TILE>> {
 
-        public BlockExtraAdvancedFactory(ExtraAdvancedFactory<TILE> factoryType) {
-            super(factoryType, properties -> properties.mapColor(BlockResourceInfo.STEEL.getMapColor()));
+        public BlockExtraAdvancedFactory(ExtraAdvancedFactory<TILE> factoryType, Properties properties) {
+            super(factoryType, defaultProperties(properties).mapColor(BlockResourceInfo.STEEL.getMapColor()));
         }
     }
 }

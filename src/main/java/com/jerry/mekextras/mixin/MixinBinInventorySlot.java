@@ -22,16 +22,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.function.Predicate;
 
 @Mixin(value = BinInventorySlot.class, remap = false)
-public abstract class MixinBinInventorySlot extends BasicInventorySlot {
+public abstract class MixinBinInventorySlot {
 
     @Final
     @Shadow
     @Mutable
-    public static Predicate<ItemStack> validator;
+    public static Predicate<net.neoforged.neoforge.transfer.item.ItemResource> validator;
 
-    protected MixinBinInventorySlot(Predicate<@NotNull ItemStack> canExtract, Predicate<@NotNull ItemStack> canInsert, Predicate<@NotNull ItemStack> validator, @Nullable IContentsListener listener, int x, int y) {
-        super(canExtract, canInsert, validator, listener, x, y);
-    }
 
     @Inject(method = "<clinit>", at = @At("TAIL"))
     private static void modifyValidator(CallbackInfo ci) {

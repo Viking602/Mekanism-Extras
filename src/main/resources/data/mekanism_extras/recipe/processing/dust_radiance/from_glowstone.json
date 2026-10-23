@@ -6,11 +6,11 @@
   },
   "item_input": {
     "count": 1,
-    "tag": "c:dusts/glowstone"
+    "ingredient": "#c:dusts/glowstone"
   },
   "output": {
     "count": 1,
     "id": "mekanism_extras:dust_radiance"
   },
-  "per_tick_usage":true
+  "per_tick_usage": true
 }

@@ -1,194 +1,165 @@
 package com.jerry.mekextras.client.model.energycube;
 
-import com.jerry.mekextras.common.tile.TileEntityExtraEnergyCube;
-
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import it.unimi.dsi.fastutil.ints.Int2ObjectAVLTreeMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.IntFunction;
 import mekanism.api.RelativeSide;
-import mekanism.client.model.baked.ExtensionBakedModel;
-import mekanism.client.render.lib.QuadTransformation;
+import com.jerry.mekextras.client.model.energycube.ExtraEnergyCubeGeometry.CubeSideModelState;
+import com.jerry.mekextras.MekanismExtras;
+import com.jerry.mekextras.common.tile.TileEntityExtraEnergyCube;
+import com.jerry.mekextras.common.tile.TileEntityExtraEnergyCube.CubeSideState;
 import mekanism.common.util.EnumUtils;
-
-import net.minecraft.Util;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.renderer.block.model.ItemOverrides;
-import net.minecraft.client.renderer.block.model.ItemTransforms;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.core.Direction;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
+import net.minecraft.client.renderer.block.dispatch.ModelState;
+import net.minecraft.client.renderer.block.dispatch.Variant;
+import net.minecraft.client.resources.model.ModelBaker;
+import net.minecraft.client.resources.model.ResolvableModel;
+import net.minecraft.client.resources.model.ResolvedModel;
+import net.minecraft.client.resources.model.SimpleModelWrapper;
+import net.minecraft.client.resources.model.geometry.BakedQuad.MaterialFlags;
+import net.minecraft.client.resources.model.sprite.Material.Baked;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.util.Util;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.client.ChunkRenderTypeSet;
-import net.neoforged.neoforge.client.RenderTypeGroup;
-import net.neoforged.neoforge.client.model.IDynamicBakedModel;
-import net.neoforged.neoforge.client.model.data.ModelData;
+import net.neoforged.neoforge.client.model.DynamicBlockStateModel;
+import net.neoforged.neoforge.client.model.block.CustomUnbakedBlockStateModel;
+import net.neoforged.neoforge.model.data.ModelData;
+import org.jspecify.annotations.Nullable;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+public class ExtraEnergyCubeBakedModel implements DynamicBlockStateModel {
 
-import java.util.*;
-import java.util.function.BiPredicate;
+    private static final CubeSideState[] INACTIVE = Util.make(new CubeSideState[EnumUtils.DIRECTIONS.length], sideStates -> Arrays.fill(sideStates, CubeSideState.INACTIVE));
 
-public class ExtraEnergyCubeBakedModel implements IDynamicBakedModel {
+    private final Int2ObjectMap<List<BlockStateModelPart>> cache = new Int2ObjectAVLTreeMap<>();
+    private final IntFunction<List<BlockStateModelPart>> partGenerator = this::generateParts;
 
-    private static final TileEntityExtraEnergyCube.CubeSideState[] INACTIVE = Util.make(new TileEntityExtraEnergyCube.CubeSideState[EnumUtils.DIRECTIONS.length], sideStates -> Arrays.fill(sideStates, TileEntityExtraEnergyCube.CubeSideState.INACTIVE));
-    private static final QuadTransformation LED_TRANSFORMS = QuadTransformation.list(QuadTransformation.fullbright, QuadTransformation.uvShift(-0.125F, 0));
-    private static final BiPredicate<TileEntityExtraEnergyCube.CubeSideState[], TileEntityExtraEnergyCube.CubeSideState[]> DATA_EQUALITY_CHECK = Arrays::equals;
+    private final BlockStateModelPart frame;
+    private final Map<RelativeSide, Map<CubeSideState, BlockStateModelPart>> dynamicParts;
 
-    private final LoadingCache<ExtensionBakedModel.QuadsKey<TileEntityExtraEnergyCube.CubeSideState[]>, List<BakedQuad>> cache = CacheBuilder.newBuilder().build(new CacheLoader<>() {
-
-        @NotNull
-        @Override
-        public List<BakedQuad> load(@NotNull ExtensionBakedModel.QuadsKey<TileEntityExtraEnergyCube.CubeSideState[]> key) {
-            return createQuads(key);
-        }
-    });
-
-    private final ExtraEnergyCubeGeometry.FaceData frame;
-    private final Map<RelativeSide, ExtraEnergyCubeGeometry.FaceData> leds;
-    private final Map<RelativeSide, ExtraEnergyCubeGeometry.FaceData> activeLEDs;
-    private final Map<RelativeSide, ExtraEnergyCubeGeometry.FaceData> ports;
-    private final Map<RelativeSide, ExtraEnergyCubeGeometry.FaceData> activePorts;
-    private final ChunkRenderTypeSet blockRenderTypes;
-    private final List<RenderType> itemRenderTypes;
-    private final List<RenderType> fabulousItemRenderTypes;
-    private final boolean isAmbientOcclusion;
-    private final boolean usesBlockLight;
-    private final boolean isGui3d;
-    private final TextureAtlasSprite particle;
-    private final ItemOverrides overrides;
-    private final ItemTransforms transforms;
-
-    ExtraEnergyCubeBakedModel(boolean useAmbientOcclusion, boolean usesBlockLight, boolean isGui3d, ItemTransforms transforms, ItemOverrides overrides,
-                              TextureAtlasSprite particle, ExtraEnergyCubeGeometry.FaceData frame, Map<RelativeSide, ExtraEnergyCubeGeometry.FaceData> leds, Map<RelativeSide, ExtraEnergyCubeGeometry.FaceData> ports, RenderTypeGroup renderTypes) {
-        this.isAmbientOcclusion = useAmbientOcclusion;
-        this.usesBlockLight = usesBlockLight;
-        this.isGui3d = isGui3d;
-        this.overrides = overrides;
-        this.transforms = transforms;
-        this.particle = particle;
+    ExtraEnergyCubeBakedModel(BlockStateModelPart frame, Map<RelativeSide, Map<CubeSideState, BlockStateModelPart>> dynamicParts) {
         this.frame = frame;
-        this.leds = leds;
-        this.ports = ports;
-        this.activeLEDs = new EnumMap<>(RelativeSide.class);
-        this.activePorts = new EnumMap<>(RelativeSide.class);
-        // Note: We don't bother having any form of lazy transformations take place here as this should only have a
-        // memory
-        // impact equivalent to having two models: one with the leds and ports off, and one with all of them active
-        for (Map.Entry<RelativeSide, ExtraEnergyCubeGeometry.FaceData> entry : this.leds.entrySet()) {
-            activeLEDs.put(entry.getKey(), entry.getValue().transform(LED_TRANSFORMS));
-        }
-        for (Map.Entry<RelativeSide, ExtraEnergyCubeGeometry.FaceData> entry : this.ports.entrySet()) {
-            activePorts.put(entry.getKey(), entry.getValue().transform(QuadTransformation.filtered_fullbright));
-        }
-        if (renderTypes.isEmpty()) {
-            this.blockRenderTypes = null;
-            this.itemRenderTypes = null;
-            this.fabulousItemRenderTypes = null;
-        } else {
-            this.blockRenderTypes = ChunkRenderTypeSet.of(renderTypes.block());
-            this.itemRenderTypes = Collections.singletonList(renderTypes.entity());
-            this.fabulousItemRenderTypes = Collections.singletonList(renderTypes.entityFabulous());
-        }
+        this.dynamicParts = dynamicParts;
     }
 
-    @NotNull
     @Override
-    public List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction side, @NotNull RandomSource rand, @NotNull ModelData data,
-                                    @Nullable RenderType renderType) {
-        TileEntityExtraEnergyCube.CubeSideState[] sideStates = data.get(TileEntityExtraEnergyCube.SIDE_STATE_PROPERTY);
+    public void collectParts(BlockAndTintGetter level, BlockPos pos, BlockState state, RandomSource random, List<BlockStateModelPart> parts) {
+        ModelData modelData = level.getModelData(pos);
+        collectParts(parts, modelData.get(TileEntityExtraEnergyCube.SIDE_STATE_PROPERTY));
+    }
+
+    public void collectParts(List<BlockStateModelPart> parts, CubeSideState @Nullable [] sideStates) {
         if (sideStates == null || sideStates.length != EnumUtils.SIDES.length) {
-            // If there is no side data then treat everything as inactive
+            //If there is no side data then treat everything as inactive
             sideStates = INACTIVE;
         }
-        // Note: We intentionally ignore the state and use null here to minimize cache size as it doesn't actually
-        // matter
-        // or get used for energy cube models
-        ExtensionBakedModel.QuadsKey<TileEntityExtraEnergyCube.CubeSideState[]> key = new ExtensionBakedModel.QuadsKey<>(null, side, rand, renderType, frame.getFaces(side));
-        key.data(sideStates, Arrays.hashCode(sideStates), DATA_EQUALITY_CHECK);
-        return cache.getUnchecked(key);
+        int key = CacheKey.pack(sideStates);
+        parts.addAll(cache.computeIfAbsent(key, partGenerator));
     }
 
-    private List<BakedQuad> createQuads(ExtensionBakedModel.QuadsKey<TileEntityExtraEnergyCube.CubeSideState[]> key) {
-        Direction side = key.getSide();
-        TileEntityExtraEnergyCube.CubeSideState[] data = Objects.requireNonNull(key.getData());
-        // Make the list of quads mutable so that we can add the proper extra portions to it
-        List<BakedQuad> quads = new ArrayList<>(key.getQuads());
+    private List<BlockStateModelPart> generateParts(int key) {
+        List<BlockStateModelPart> parts = new ArrayList<>();
+        parts.add(frame);
+        CubeSideState[] data = CacheKey.unpack(key);
         for (int i = 0; i < EnumUtils.SIDES.length; i++) {
             RelativeSide dir = EnumUtils.SIDES[i];
-            TileEntityExtraEnergyCube.CubeSideState sideState = data[i];
-            if (sideState == TileEntityExtraEnergyCube.CubeSideState.ACTIVE_LIT) {
-                quads.addAll(activeLEDs.get(dir).getFaces(side));
-                quads.addAll(activePorts.get(dir).getFaces(side));
-            } else {
-                quads.addAll(leds.get(dir).getFaces(side));
-                if (sideState == TileEntityExtraEnergyCube.CubeSideState.ACTIVE_UNLIT) {
-                    quads.addAll(ports.get(dir).getFaces(side));
-                }
+            CubeSideState sideState = data[i];
+            if (sideState != null) {
+                parts.add(dynamicParts.get(dir).get(sideState));
             }
         }
-        return quads;
+        return parts;
     }
 
-    @Override
-    public boolean useAmbientOcclusion() {
-        return isAmbientOcclusion;
-    }
-
-    @Override
-    public boolean isGui3d() {
-        return isGui3d;
-    }
-
-    @Override
-    public boolean usesBlockLight() {
-        return usesBlockLight;
-    }
-
-    @Override
-    public boolean isCustomRenderer() {
-        return false;
-    }
-
-    @NotNull
     @Override
     @Deprecated
-    public TextureAtlasSprite getParticleIcon() {
-        return particle;
+    public Baked particleMaterial() {
+        return frame.particleMaterial();
     }
 
-    @NotNull
+    @MaterialFlags
     @Override
-    @Deprecated
-    public ItemOverrides getOverrides() {
-        return overrides;
+    public int materialFlags() {
+        return frame.materialFlags();
     }
 
-    @NotNull
-    @Override
-    @Deprecated
-    public ItemTransforms getTransforms() {
-        return transforms;
-    }
+    private static class CacheKey {
 
-    @NotNull
-    @Override
-    public ChunkRenderTypeSet getRenderTypes(@NotNull BlockState state, @NotNull RandomSource rand, @NotNull ModelData data) {
-        return blockRenderTypes == null ? IDynamicBakedModel.super.getRenderTypes(state, rand, data) : blockRenderTypes;
-    }
+        private static final int BITS_PER_STATE = 4; //nb: only 2 used (values 0-2)
+        private static final int ORDINAL_MASK = 0xF;
+        private static final CubeSideState[] CUBE_SIDE_STATES = CubeSideState.values();
+        private static final int NUM_STATES = CUBE_SIDE_STATES.length;
 
-    @NotNull
-    @Override
-    public List<RenderType> getRenderTypes(@NotNull ItemStack stack, boolean fabulous) {
-        if (fabulous) {
-            if (fabulousItemRenderTypes != null) {
-                return fabulousItemRenderTypes;
+        static int pack(CubeSideState[] states) {
+            int size = states.length;
+            int key = 0;
+            for (int i = 0; i < size; i++) {
+                key |= (states[i].ordinal() & ORDINAL_MASK) << (BITS_PER_STATE * i);
             }
-        } else if (itemRenderTypes != null) {
-            return itemRenderTypes;
+            return key;
         }
-        return IDynamicBakedModel.super.getRenderTypes(stack, fabulous);
+
+        static CubeSideState[] unpack(int key) {
+            if (key == 0) {
+                return INACTIVE;
+            }
+            CubeSideState[] states = new CubeSideState[6];
+            for (int i = 0; i < 6; i++) {
+                int ordinal = (key >> (BITS_PER_STATE * i)) & ORDINAL_MASK;
+                states[i] = ordinal < NUM_STATES ? CUBE_SIDE_STATES[ordinal] : CubeSideState.INACTIVE;
+            }
+            return states;
+        }
+    }
+
+    public record Unbaked(Variant tierModel) implements CustomUnbakedBlockStateModel {
+
+        public static final Identifier ID = MekanismExtras.rl("energy_cube_sided");
+        public static final MapCodec<Unbaked> MAP_CODEC = RecordCodecBuilder.mapCodec(in -> in.group(
+              Variant.MAP_CODEC.fieldOf("tier_model").forGetter(Unbaked::tierModel)
+        ).apply(in, Unbaked::new));
+
+        @Override
+        public ExtraEnergyCubeBakedModel bake(ModelBaker baker) {
+            Map<RelativeSide, Map<CubeSideState, BlockStateModelPart>> dynamicParts = new EnumMap<>(RelativeSide.class);
+            ResolvedModel model = baker.getModel(tierModel.modelLocation());
+
+            ModelState tierModelState = tierModel.modelState().asModelState();
+            BlockStateModelPart frame = SimpleModelWrapper.bake(baker, model, tierModelState);
+
+            for (RelativeSide side : EnumUtils.SIDES) {
+                Map<CubeSideState, BlockStateModelPart> sideMap = new HashMap<>(2);
+                dynamicParts.put(side, sideMap);
+                addSideState(baker, side, sideMap, model, tierModelState, CubeSideState.ACTIVE_LIT);
+                addSideState(baker, side, sideMap, model, tierModelState, CubeSideState.ACTIVE_UNLIT);
+                addSideState(baker, side, sideMap, model, tierModelState, CubeSideState.INACTIVE);
+            }
+
+            return new ExtraEnergyCubeBakedModel(frame, dynamicParts);
+        }
+
+        private static void addSideState(ModelBaker baker, RelativeSide side, Map<CubeSideState, BlockStateModelPart> sideMap, ResolvedModel model, ModelState tierModelState, CubeSideState sideState) {
+            sideMap.put(sideState, SimpleModelWrapper.bake(baker, model, new CubeSideModelState(tierModelState, side, sideState)));
+        }
+
+        @Override
+        public MapCodec<Unbaked> codec() {
+            return MAP_CODEC;
+        }
+
+        @Override
+        public void resolveDependencies(ResolvableModel.Resolver resolver) {
+            resolver.markDependency(tierModel.modelLocation());
+        }
     }
 }

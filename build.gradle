@@ -14,7 +14,12 @@ version = "${mod_version}" + (isSnapshot ? "-SNAPSHOT" : "")
 boolean isCI = System.getenv("CI") != null
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
+}
+
+tasks.named('jar', Jar) {
+    archiveClassifier.set('render.1')
+    manifest.attributes('Viking602-Transmitter-Rendering-Fix': '1')
 }
 
 sourceSets {
@@ -68,9 +73,44 @@ apply from: "$rootDir/gradle/scripts/spotless.gradle"
 tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
     options.compilerArgs << "-Xlint:-removal"
+    options.compilerArgs.addAll(["-Xmaxerrs", "1500"])
     options.compilerArgs << "-Aquiet=true" // Suppress mixin notes
 }
 
 lombok {
-    version = "1.18.36"
+    version = "1.18.46"
+}
+
+sourceSets {
+    verification {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+neoForge {
+    addModdingDependenciesTo(sourceSets.verification)
+    mods { mekanism_extras_verification { sourceSet sourceSets.verification } }
+    runs {
+        integrationClient {
+            client()
+            sourceSet = sourceSets.verification
+            gameDirectory = file('../test-mekaddons-fullpack-20261011')
+            systemProperty('mekextras.verify.client', 'true')
+            jvmArgument('-Xmx12G')
+        }
+        verifyServer {
+            server()
+            sourceSet = sourceSets.verification
+            gameDirectory = file('../test-mekanismextras-server-20261011')
+            programArguments.addAll('--nogui', '--world', 'world-extra')
+            systemProperty('mekextras.verify', 'true')
+        }
+        verifyClient {
+            client()
+            sourceSet = sourceSets.verification
+            gameDirectory = file('../test-mekanismextras-client-20261011')
+            systemProperty('mekextras.verify.client', 'true')
+            systemProperty('mekextras.verify.worldOnly', project.findProperty('worldOnly') ?: 'false')
+        }
+    }
 }

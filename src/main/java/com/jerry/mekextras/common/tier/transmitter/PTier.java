@@ -8,10 +8,10 @@ public class PTier {
 
     public static int getPipePullAmount(PipeTier tier) {
         return switch (tier) {
-            case BASIC -> (int) ExtraConfig.extraTierConfig.absoluteMechanicalPipePullAmount.get();
-            case ADVANCED -> (int) ExtraConfig.extraTierConfig.supremeMechanicalPipePullAmount.get();
-            case ELITE -> (int) ExtraConfig.extraTierConfig.cosmicMechanicalPipePullAmount.get();
-            case ULTIMATE -> (int) ExtraConfig.extraTierConfig.infiniteMechanicalPipePullAmount.get();
+            case BASIC -> com.google.common.primitives.Ints.saturatedCast(ExtraConfig.extraTierConfig.absoluteMechanicalPipePullAmount.get());
+            case ADVANCED -> com.google.common.primitives.Ints.saturatedCast(ExtraConfig.extraTierConfig.supremeMechanicalPipePullAmount.get());
+            case ELITE -> com.google.common.primitives.Ints.saturatedCast(ExtraConfig.extraTierConfig.cosmicMechanicalPipePullAmount.get());
+            case ULTIMATE -> com.google.common.primitives.Ints.saturatedCast(ExtraConfig.extraTierConfig.infiniteMechanicalPipePullAmount.get());
         };
     }
 

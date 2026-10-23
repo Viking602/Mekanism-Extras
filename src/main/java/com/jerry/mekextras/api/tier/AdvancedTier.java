@@ -9,7 +9,7 @@ import net.minecraft.network.chat.TextColor;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.util.ByIdMap;
-import net.minecraft.util.FastColor;
+import net.minecraft.util.ARGB;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.level.material.MapColor;
 
@@ -45,6 +45,8 @@ public enum AdvancedTier implements IAdvancedTier, StringRepresentable, Supports
         setColorFromAtlas(rgbCode);
     }
 
+    public MapColor getMapColor() { return mapColor; }
+
     public String getSimpleName() {
         return name;
     }
@@ -77,7 +79,7 @@ public enum AdvancedTier implements IAdvancedTier, StringRepresentable, Supports
     @Override
     public void setColorFromAtlas(int[] color) {
         rgbCode = color;
-        argb = FastColor.ARGB32.color(rgbCode[0], rgbCode[1], rgbCode[2]);
+        argb = ARGB.color(rgbCode[0], rgbCode[1], rgbCode[2]);
         textColor = TextColor.fromRgb(argb);
     }
 

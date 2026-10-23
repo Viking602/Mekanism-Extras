@@ -6,7 +6,7 @@
   },
   "item_input": {
     "count": 1,
-    "tag": "c:circuits/absolute"
+    "ingredient": "#c:circuits/absolute"
   },
   "output": {
     "count": 1,

@@ -1,15 +1,9 @@
 {
   "type": "minecraft:crafting_shaped",
   "key": {
-    "S": {
-      "tag": "mekanism_extras:alloys/shining"
-    },
-    "I": {
-      "tag": "c:storage_blocks/lead"
-    },
-    "T": {
-      "item": "mekanism_extras:supreme_radioactive_waste_barrel"
-    }
+    "S": "#mekanism_extras:alloys/shining",
+    "I": "#c:storage_blocks/lead",
+    "T": "mekanism_extras:supreme_radioactive_waste_barrel"
   },
   "pattern": [
     "SIS",

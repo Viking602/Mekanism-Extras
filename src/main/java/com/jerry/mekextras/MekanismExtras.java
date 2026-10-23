@@ -26,9 +26,10 @@ import mekanism.common.command.CommandMek;
 import mekanism.common.command.builders.BuildCommand;
 import mekanism.common.lib.Version;
 import mekanism.common.lib.multiblock.MultiblockCache;
-import mekanism.common.lib.multiblock.MultiblockManager;
+import mekanism.common.lib.multiblock.MultiblockType;
+import mekanism.common.lib.multiblock.MekanismMultiblockRegistry;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -54,8 +55,9 @@ public class MekanismExtras implements IModModule {
 
     public final Version versionNumber;
 
-    public static final MultiblockManager<ReinforcedMatrixMultiblockData> matrixManager = new MultiblockManager<>("reinforcedInductionMatrix", MultiblockCache::new, ReinforcedMatrixValidator::new);
-    public static final MultiblockManager<NaquadahReactorMultiblockData> naquadahReactorManager = new MultiblockManager<>("naquadahReactor", NaquadahReactorCache::new, NaquadahReactorValidator::new);
+    private static final MekanismMultiblockRegistry MULTIBLOCKS = new MekanismMultiblockRegistry(MOD_ID);
+    public static final MultiblockType<ReinforcedMatrixMultiblockData> matrixManager = MULTIBLOCKS.registerMultiblock("reinforced_induction_matrix", MultiblockCache::new, ReinforcedMatrixValidator::new);
+    public static final MultiblockType<NaquadahReactorMultiblockData> naquadahReactorManager = MULTIBLOCKS.registerMultiblock("naquadah_reactor", NaquadahReactorCache::new, NaquadahReactorValidator::new);
 
     public static final Logger LOGGER = LogUtils.getLogger();
 
@@ -67,6 +69,7 @@ public class MekanismExtras implements IModModule {
         modEventBus.addListener(ExtraCapabilities::registerCapabilities);
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(ExtraConfig::onConfigLoad);
+        MULTIBLOCKS.register(modEventBus);
         ExtraItems.register(modEventBus);
         ExtraBlocks.register(modEventBus);
         ExtraFluids.register(modEventBus);
@@ -88,8 +91,8 @@ public class MekanismExtras implements IModModule {
         return instance.extraPacketHandler;
     }
 
-    public static ResourceLocation rl(String path) {
-        return ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
+    public static Identifier rl(String path) {
+        return Identifier.fromNamespaceAndPath(MOD_ID, path);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {

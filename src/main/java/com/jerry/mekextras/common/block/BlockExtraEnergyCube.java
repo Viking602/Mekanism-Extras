@@ -122,8 +122,8 @@ public class BlockExtraEnergyCube extends BlockTile.BlockTileModel<TileEntityExt
         return ((((((top | bottom << 1) | front << 2) | back << 3) | left << 4) | right << 5) | (rotateVertical ? 1 : 0) << 6) | (rotateHorizontal ? 1 : 0) << 7;
     }
 
-    public BlockExtraEnergyCube(Machine<TileEntityExtraEnergyCube> type) {
-        super(type, Properties.of().strength(2, 2.4F).requiresCorrectToolForDrops().dynamicShape().mapColor(MapColor.DEEPSLATE));
+    public BlockExtraEnergyCube(Machine<TileEntityExtraEnergyCube> type, Properties properties) {
+        super(type, properties.strength(2, 2.4F).requiresCorrectToolForDrops().dynamicShape().mapColor(MapColor.DEEPSLATE));
     }
 
     @Override

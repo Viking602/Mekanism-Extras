@@ -1,7 +1,15 @@
 package com.jerry.mekextras.common.integration.mekmm.tile.factory;
+import com.jerry.mekextras.api.ExtraUpgrade;
+import com.jerry.mekextras.api.mixin.IMixinMachineEnergyContainer;
+import com.jerry.mekextras.common.block.attribute.ExtraAttribute;
+import com.jerry.mekextras.common.util.ExtraUpgradeUtils;
 
-import com.jerry.mekextras.common.inventory.slot.StackableInputInventorySlot;
-import com.jerry.mekextras.common.upgrade.ExtraPressingUpgradeData;
+import com.jerry.mekmm.api.recipes.TripleItemToItemRecipe;
+import com.jerry.mekmm.api.recipes.cache.ThreeInputCachedRecipe;
+import com.jerry.mekmm.client.recipe_viewer.MMRecipeViewerRecipeType;
+import com.jerry.mekmm.common.recipe.MoreMachineRecipeType;
+import com.jerry.mekmm.common.recipe.lookup.cache.MoreMachineInputRecipeCache;
+import com.jerry.mekmm.common.tile.machine.TileEntityPresser;
 
 import mekanism.api.IContentsListener;
 import mekanism.api.inventory.IInventorySlot;
@@ -12,14 +20,14 @@ import mekanism.api.recipes.inputs.IInputHandler;
 import mekanism.api.recipes.inputs.InputHelper;
 import mekanism.client.recipe_viewer.type.IRecipeViewerRecipeType;
 import mekanism.common.Mekanism;
-import mekanism.common.capabilities.holder.slot.InventorySlotHelper;
+import mekanism.common.capabilities.holder.container.MekContainerHelper;
 import mekanism.common.integration.computer.SpecialComputerMethodWrapper.ComputerIInventorySlotWrapper;
 import mekanism.common.integration.computer.annotation.WrappingComputerMethod;
 import mekanism.common.inventory.container.slot.ContainerSlotType;
 import mekanism.common.inventory.slot.InputInventorySlot;
-import mekanism.common.inventory.warning.WarningTracker.WarningType;
 import mekanism.common.lib.transmitter.TransmissionType;
 import mekanism.common.recipe.IMekanismRecipeTypeProvider;
+import mekanism.common.recipe.lookup.ITripleRecipeLookupHandler;
 import mekanism.common.tile.component.config.ConfigInfo;
 import mekanism.common.tile.component.config.DataType;
 import mekanism.common.tile.component.config.slot.InventorySlotInfo;
@@ -28,18 +36,14 @@ import mekanism.common.upgrade.IUpgradeData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 
-import com.jerry.mekmm.api.recipes.TripleItemToItemRecipe;
-import com.jerry.mekmm.api.recipes.cache.ThreeInputCachedRecipe;
-import com.jerry.mekmm.client.recipe_viewer.MoreMachineRecipeViewerRecipeType;
-import com.jerry.mekmm.common.recipe.MoreMachineRecipeType;
-import com.jerry.mekmm.common.recipe.lookup.TripleItemRecipeLookupHandler;
-import com.jerry.mekmm.common.recipe.lookup.cache.MoreMachineInputRecipeCache.TripleItem;
-import com.jerry.mekmm.common.tile.machine.TileEntityPresser;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -47,7 +51,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public class TileEntityExtraPressingFactory extends TileEntityExtraMoreMachineItemToItemFactory<TripleItemToItemRecipe> implements TripleItemRecipeLookupHandler<TripleItemToItemRecipe> {
+public class TileEntityExtraPressingFactory extends TileEntityExtraMoreMachineItemToItemFactory<TripleItemToItemRecipe>
+                                       implements ITripleRecipeLookupHandler<Item, ItemStack, Item, ItemStack, Item, ItemStack, TripleItemToItemRecipe, MoreMachineInputRecipeCache.TripleItem<TripleItemToItemRecipe>> {
 
     private static final List<RecipeError> TRACKED_ERROR_TYPES = List.of(
             RecipeError.NOT_ENOUGH_ENERGY,
@@ -61,13 +66,13 @@ public class TileEntityExtraPressingFactory extends TileEntityExtraMoreMachineIt
             RecipeError.NOT_ENOUGH_SECONDARY_INPUT,
             TileEntityPresser.NOT_ENOUGH_TERTIARY_INPUT_ERROR);
 
-    private final IInputHandler<@NotNull ItemStack> secondaryInputHandler;
-    private final IInputHandler<@NotNull ItemStack> tertiaryInputHandler;
+    private final IInputHandler<Item, @NotNull ItemStack> secondaryInputHandler;
+    private final IInputHandler<Item, @NotNull ItemStack> tertiaryInputHandler;
 
     @WrappingComputerMethod(wrapper = ComputerIInventorySlotWrapper.class, methodNames = "getSecondaryInput", docPlaceholder = "secondary input slot")
-    StackableInputInventorySlot secondarySlot;
+    InputInventorySlot secondarySlot;
     @WrappingComputerMethod(wrapper = ComputerIInventorySlotWrapper.class, methodNames = "getTertiaryInput", docPlaceholder = "tertiary input slot")
-    StackableInputInventorySlot tertiarySlot;
+    InputInventorySlot tertiarySlot;
 
     public TileEntityExtraPressingFactory(Holder<Block> blockProvider, BlockPos pos, BlockState state) {
         super(blockProvider, pos, state, TRACKED_ERROR_TYPES, GLOBAL_ERROR_TYPES);
@@ -83,23 +88,15 @@ public class TileEntityExtraPressingFactory extends TileEntityExtraMoreMachineIt
             itemConfig.addSlotInfo(DataType.EXTRA, new InventorySlotInfo(true, true, tertiarySlot));
             itemConfig.addSlotInfo(DataType.ENERGY, new InventorySlotInfo(true, true, energySlot));
         }
-
         secondaryInputHandler = InputHelper.getInputHandler(secondarySlot, RecipeError.NOT_ENOUGH_SECONDARY_INPUT);
         tertiaryInputHandler = InputHelper.getInputHandler(tertiarySlot, TileEntityPresser.NOT_ENOUGH_TERTIARY_INPUT_ERROR);
     }
 
     @Override
-    protected RecipeError getPrimaryInputError() {
-        return TileEntityPresser.NOT_ENOUGH_PRIMARY_INPUT_ERROR;
-    }
-
-    @Override
-    protected void addSlots(InventorySlotHelper builder, IContentsListener listener, IContentsListener updateSortingListener) {
+    protected void addSlots(MekContainerHelper<IInventorySlot> builder, IContentsListener listener, IContentsListener updateSortingListener) {
         super.addSlots(builder, listener, updateSortingListener);
-        builder.addSlot(secondarySlot = StackableInputInventorySlot.at(tier, this::containsRecipeB, markAllMonitorsChanged(listener), 7, 57))
-                .tracksWarnings(slot -> slot.warning(WarningType.NO_MATCHING_RECIPE, getWarningCheck(RecipeError.NOT_ENOUGH_SECONDARY_INPUT, 0)));
-        builder.addSlot(tertiarySlot = StackableInputInventorySlot.at(tier, this::containsRecipeC, markAllMonitorsChanged(listener), 7, 37))
-                .tracksWarnings(slot -> slot.warning(WarningType.NO_MATCHING_RECIPE, getWarningCheck(TileEntityPresser.NOT_ENOUGH_TERTIARY_INPUT_ERROR, 0)));
+        builder.addContainer(secondarySlot = InputInventorySlot.at(this::containsRecipeB, markAllMonitorsChanged(listener), 7, 57));
+        builder.addContainer(tertiarySlot = InputInventorySlot.at(this::containsRecipeC, markAllMonitorsChanged(listener), 7, 37));
         tertiarySlot.setSlotType(ContainerSlotType.EXTRA);
     }
 
@@ -110,47 +107,43 @@ public class TileEntityExtraPressingFactory extends TileEntityExtraMoreMachineIt
     }
 
     @Override
-    protected boolean defaultsIOConfig() {
-        return false;
+    public boolean isItemValidForSlot(@NotNull ItemResource stack) {
+        return containsRecipeABC(stack.toStack(), secondarySlot.resource().toStack(secondarySlot.amountAsInt()), tertiarySlot.resource().toStack(tertiarySlot.amountAsInt()));
     }
 
     @Override
-    protected boolean isCachedRecipeValid(@Nullable CachedRecipe<TripleItemToItemRecipe> cached, @NotNull ItemStack stack) {
+    public boolean isValidInputItem(@NotNull ItemResource stack) {
+        return containsRecipeA(stack.toStack());
+    }
+
+    @Override
+    protected int getNeededInput(TripleItemToItemRecipe recipe, ItemResource inputStack) {
+        return MathUtils.clampToInt(recipe.getFirstInput().getNeededAmount(inputStack));
+    }
+
+    @Override
+    protected boolean isCachedRecipeValid(@Nullable CachedRecipe<TripleItemToItemRecipe> cached, @NotNull ItemResource stack) {
         if (cached != null) {
             TripleItemToItemRecipe cachedRecipe = cached.getRecipe();
-            return cachedRecipe.getFirstInput().testType(stack) && (secondarySlot.isEmpty() || cachedRecipe.getSecondInput().testType(secondarySlot.getStack())) && (tertiarySlot.isEmpty() || cachedRecipe.getThirdInput().testType(tertiarySlot.getStack()));
+            return cachedRecipe.getFirstInput().testType(stack) && (secondarySlot.isEmpty() || cachedRecipe.getSecondInput().testType(secondarySlot.resource())) &&
+                    (tertiarySlot.isEmpty() || cachedRecipe.getThirdInput().testType(tertiarySlot.resource()));
         }
         return false;
     }
 
     @Override
-    protected @Nullable TripleItemToItemRecipe findRecipe(int process, @NotNull ItemStack fallbackInput, @NotNull IInventorySlot outputSlot, @Nullable IInventorySlot secondaryOutputSlot) {
-        return getRecipeType().getInputCache().findFirstRecipe(level, fallbackInput, secondarySlot.getStack(), tertiarySlot.getStack());
+    protected @Nullable TripleItemToItemRecipe findRecipe(int process, @NotNull ItemResource fallbackInput, @NotNull IInventorySlot outputSlot, @Nullable IInventorySlot secondaryOutputSlot) {
+        return getRecipeType().getInputCache().findFirstRecipe(level, fallbackInput.toStack(), secondarySlot.resource().toStack(secondarySlot.amountAsInt()), tertiarySlot.resource().toStack(tertiarySlot.amountAsInt()));
     }
 
     @Override
-    protected int getNeededInput(TripleItemToItemRecipe recipe, ItemStack inputStack) {
-        return MathUtils.clampToInt(recipe.getFirstInput().getNeededAmount(inputStack));
-    }
-
-    @Override
-    public boolean isItemValidForSlot(@NotNull ItemStack stack) {
-        return containsRecipeABC(stack, secondarySlot.getStack(), tertiarySlot.getStack());
-    }
-
-    @Override
-    public boolean isValidInputItem(@NotNull ItemStack stack) {
-        return containsRecipeA(stack);
-    }
-
-    @Override
-    public @NotNull IMekanismRecipeTypeProvider<RecipeInput, TripleItemToItemRecipe, TripleItem<TripleItemToItemRecipe>> getRecipeType() {
+    public @NotNull IMekanismRecipeTypeProvider<RecipeInput, TripleItemToItemRecipe, MoreMachineInputRecipeCache.TripleItem<TripleItemToItemRecipe>> getRecipeType() {
         return MoreMachineRecipeType.PRESSING;
     }
 
     @Override
     public @Nullable IRecipeViewerRecipeType<TripleItemToItemRecipe> recipeViewerType() {
-        return MoreMachineRecipeViewerRecipeType.PRESSING;
+        return MMRecipeViewerRecipeType.PRESSING;
     }
 
     @Override
@@ -160,7 +153,7 @@ public class TileEntityExtraPressingFactory extends TileEntityExtraMoreMachineIt
 
     @Override
     public @NotNull CachedRecipe<TripleItemToItemRecipe> createNewCachedRecipe(@NotNull TripleItemToItemRecipe recipe, int cacheIndex) {
-        return ThreeInputCachedRecipe.TripleItemToItem(recipe, recheckAllRecipeErrors[cacheIndex], inputHandlers[cacheIndex], secondaryInputHandler, tertiaryInputHandler, outputHandlers[cacheIndex])
+        return ThreeInputCachedRecipe.tripleItemToItem(recipe, recheckAllRecipeErrors[cacheIndex], inputHandlers[cacheIndex], secondaryInputHandler, tertiaryInputHandler, outputHandlers[cacheIndex])
                 .setErrorsChanged(errors -> errorTracker.onErrorsChanged(errors, cacheIndex))
                 .setCanHolderFunction(this::canFunction)
                 .setActive(active -> setActiveState(active, cacheIndex))
@@ -168,24 +161,11 @@ public class TileEntityExtraPressingFactory extends TileEntityExtraMoreMachineIt
                 .setRequiredTicks(this::getTicksRequired)
                 .setOnFinish(this::markForSave)
                 .setOperatingTicksChanged(operatingTicks -> progress[cacheIndex] = operatingTicks)
-                .setBaselineMaxOperations(this::getOperationsPerTick);
+                .setBaselineMaxOperations(() -> upgradeMaxOperations);
     }
 
     @Override
-    public void parseUpgradeData(HolderLookup.Provider provider, @NotNull IUpgradeData upgradeData) {
-        if (upgradeData instanceof ExtraPressingUpgradeData data) {
-            super.parseUpgradeData(provider, upgradeData);
-            secondarySlot.deserializeNBT(provider, data.secondarySlot.serializeNBT(provider));
-            tertiarySlot.deserializeNBT(provider, data.tertiarySlot.serializeNBT(provider));
-        } else {
-            Mekanism.logger.warn("Unhandled upgrade data.", new Throwable());
-        }
-    }
-
-    @NotNull
-    @Override
-    public ExtraPressingUpgradeData getUpgradeData(HolderLookup.Provider provider) {
-        return new ExtraPressingUpgradeData(provider, redstone, getControlType(), getEnergyContainer(), progress, energySlot, secondarySlot, tertiarySlot,
-                inputSlots, outputSlots, isSorting(), getComponents());
+    public void parseUpgradeData(@NotNull IUpgradeData upgradeData, HolderLookup.Provider provider, TransactionContext transaction) {
+        Mekanism.logger.warn("Unhandled upgrade data.", new Throwable());
     }
 }

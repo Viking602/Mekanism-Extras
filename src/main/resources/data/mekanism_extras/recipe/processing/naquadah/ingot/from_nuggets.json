@@ -1,12 +1,8 @@
 {
   "type": "minecraft:crafting_shaped",
   "key": {
-    "#": {
-      "tag": "c:nuggets/naquadah"
-    },
-    "P": {
-      "item": "mekanism_extras:nugget_naquadah"
-    }
+    "#": "#c:nuggets/naquadah",
+    "P": "mekanism_extras:nugget_naquadah"
   },
   "pattern": [
     "###",

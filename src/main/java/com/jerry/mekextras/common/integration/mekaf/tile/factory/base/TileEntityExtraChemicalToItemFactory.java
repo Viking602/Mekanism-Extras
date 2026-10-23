@@ -1,10 +1,14 @@
 package com.jerry.mekextras.common.integration.mekaf.tile.factory.base;
+import com.jerry.mekextras.api.ExtraUpgrade;
+import com.jerry.mekextras.api.mixin.IMixinMachineEnergyContainer;
+import com.jerry.mekextras.common.block.attribute.ExtraAttribute;
+import com.jerry.mekextras.common.util.ExtraUpgradeUtils;
 
-import com.jerry.mekextras.common.integration.mekaf.inventory.slot.ExtraAdvancedFactoryOutputInventorySlot;
+import com.jerry.mekaf.common.upgrade.ChemicalToItemUpgradeData;
 
-import mekanism.api.Action;
 import mekanism.api.IContentsListener;
 import mekanism.api.chemical.BasicChemicalTank;
+import mekanism.api.chemical.ChemicalResource;
 import mekanism.api.chemical.ChemicalStack;
 import mekanism.api.chemical.IChemicalTank;
 import mekanism.api.inventory.IInventorySlot;
@@ -16,19 +20,18 @@ import mekanism.api.recipes.inputs.InputHelper;
 import mekanism.api.recipes.outputs.IOutputHandler;
 import mekanism.api.recipes.outputs.OutputHelper;
 import mekanism.common.CommonWorldTickHandler;
-import mekanism.common.capabilities.holder.chemical.ChemicalTankHelper;
-import mekanism.common.capabilities.holder.slot.InventorySlotHelper;
+import mekanism.common.capabilities.holder.container.MekContainerHelper;
 import mekanism.common.integration.computer.ComputerException;
 import mekanism.common.integration.computer.annotation.ComputerMethod;
+import com.jerry.mekextras.common.integration.mekaf.inventory.slot.ExtraAdvancedFactoryOutputInventorySlot;
 import mekanism.common.inventory.warning.WarningTracker.WarningType;
 import mekanism.common.lib.transmitter.TransmissionType;
 import mekanism.common.recipe.lookup.monitor.FactoryRecipeCacheLookupMonitor;
-import mekanism.common.tile.component.ITileComponent;
 import mekanism.common.tile.component.config.ConfigInfo;
 import mekanism.common.tile.component.config.DataType;
 import mekanism.common.tile.component.config.slot.ChemicalSlotInfo;
+import mekanism.common.tile.component.config.slot.InventorySlotInfo;
 import mekanism.common.upgrade.IUpgradeData;
-import mekanism.common.util.MekanismUtils;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -36,10 +39,8 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 
-import com.jerry.mekaf.common.content.blocktype.IAdvancedFactoryType;
-import com.jerry.mekaf.common.upgrade.ChemicalToItemUpgradeData;
-import com.jerry.mekmm.common.util.ChemicalStackMap;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -47,7 +48,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 import java.util.function.ToIntBiFunction;
 
-public abstract class TileEntityExtraChemicalToItemFactory<RECIPE extends MekanismRecipe<?>, TYPE extends IAdvancedFactoryType<?>> extends TileEntityExtraAdvancedFactoryBase<RECIPE, TYPE> {
+public abstract class TileEntityExtraChemicalToItemFactory<RECIPE extends MekanismRecipe<?>> extends TileEntityExtraAdvancedFactoryBase<RECIPE> {
 
     protected CIProcessInfo[] processInfoSlots;
     public ExtraAdvancedFactoryOutputInventorySlot[] outputSlot;
@@ -56,12 +57,11 @@ public abstract class TileEntityExtraChemicalToItemFactory<RECIPE extends Mekani
     public List<IChemicalTank> inputChemicalTanks;
     public List<IInventorySlot> outputItemSlots;
 
-    protected TileEntityExtraChemicalToItemFactory(Holder<Block> blockProvider, BlockPos pos, BlockState state, List<RecipeError> errorTypes, Set<RecipeError> globalErrorTypes, TYPE type) {
-        super(blockProvider, pos, state, errorTypes, globalErrorTypes, type);
+    protected TileEntityExtraChemicalToItemFactory(Holder<Block> blockProvider, BlockPos pos, BlockState state, List<RecipeError> errorTypes, Set<RecipeError> globalErrorTypes) {
+        super(blockProvider, pos, state, errorTypes, globalErrorTypes);
         inputChemicalTanks = new ArrayList<>();
         outputItemSlots = new ArrayList<>();
 
-        // 由于化学品储罐的添加顺序在物品槽位之前，所以这里需要在构造器中初始化processInfoSlots
         processInfoSlots = new CIProcessInfo[tier.processes];
         for (int i = 0; i < tier.processes; i++) {
             processInfoSlots[i] = new CIProcessInfo(i, inputTank[i], outputSlot[i]);
@@ -72,7 +72,15 @@ public abstract class TileEntityExtraChemicalToItemFactory<RECIPE extends Mekani
             outputItemSlots.add(info.outputSlot());
         }
 
-        configComponent.setupItemIOConfig(Collections.emptyList(), outputItemSlots, energySlot, false);
+        ConfigInfo itemConfig = configComponent.getConfig(TransmissionType.ITEM);
+        if (itemConfig != null) {
+            itemConfig.addSlotInfo(DataType.OUTPUT, new InventorySlotInfo(false, true, outputItemSlots));
+            IInventorySlot extraSlot = getExtraSlot();
+            if (extraSlot != null) {
+                itemConfig.addSlotInfo(DataType.EXTRA, new InventorySlotInfo(true, true, extraSlot));
+            }
+            itemConfig.addSlotInfo(DataType.ENERGY, new InventorySlotInfo(true, true, energySlot));
+        }
         ConfigInfo chemicalConfig = configComponent.getConfig(TransmissionType.CHEMICAL);
         if (chemicalConfig != null) {
             chemicalConfig.addSlotInfo(DataType.INPUT, new ChemicalSlotInfo(true, false, inputChemicalTanks));
@@ -80,19 +88,20 @@ public abstract class TileEntityExtraChemicalToItemFactory<RECIPE extends Mekani
     }
 
     @Override
-    protected void addTanks(ChemicalTankHelper builder, IContentsListener listener, IContentsListener updateSortingListener) {
+    protected void addTanks(MekContainerHelper<IChemicalTank> builder, IContentsListener listener, IContentsListener updateSortingListener) {
         inputTank = new IChemicalTank[tier.processes];
         chemicalInputHandlers = new IInputHandler[tier.processes];
         for (int i = 0; i < tier.processes; i++) {
             int index = i;
-            inputTank[i] = BasicChemicalTank.inputModern(MAX_CHEMICAL * tier.processes, this::isValidInputChemical, stack -> isChemicalValidForTank(stack) && inputProducesOutput(index, stack, outputSlot[index], false), recipeCacheLookupMonitors[index]);
-            builder.addTank(inputTank[i]);
+            inputTank[i] = BasicChemicalTank.input(MAX_CHEMICAL * tier.processes, (stack, type) -> isValidInputChemical(stack),
+                    stack -> isChemicalValidForTank(stack) && inputProducesOutput(index, stack, outputSlot[index], false), recipeCacheLookupMonitors[index]);
+            builder.addContainer(inputTank[i]);
             chemicalInputHandlers[i] = InputHelper.getInputHandler(inputTank[i], RecipeError.NOT_ENOUGH_INPUT);
         }
     }
 
     @Override
-    protected void addSlots(InventorySlotHelper builder, IContentsListener listener, IContentsListener updateSortingListener) {
+    protected void addSlots(MekContainerHelper<IInventorySlot> builder, IContentsListener listener, IContentsListener updateSortingListener) {
         outputSlot = new ExtraAdvancedFactoryOutputInventorySlot[tier.processes];
         itemOutputHandlers = new IOutputHandler[tier.processes];
         for (int i = 0; i < tier.processes; i++) {
@@ -103,7 +112,7 @@ public abstract class TileEntityExtraChemicalToItemFactory<RECIPE extends Mekani
             };
             int index = i;
             outputSlot[i] = ExtraAdvancedFactoryOutputInventorySlot.at(this, updateSortingAndUnpause, getXPos(i), 70);
-            builder.addSlot(outputSlot[i]).tracksWarnings(slot -> slot.warning(WarningType.NO_SPACE_IN_OUTPUT, getWarningCheck(RecipeError.NOT_ENOUGH_OUTPUT_SPACE, index)));
+            builder.addContainer(outputSlot[i]).tracksWarnings(slot -> slot.warning(WarningType.NO_SPACE_IN_OUTPUT, getWarningCheck(RecipeError.NOT_ENOUGH_OUTPUT_SPACE, index)));
             itemOutputHandlers[i] = OutputHelper.getOutputHandler(outputSlot[i], RecipeError.NOT_ENOUGH_OUTPUT_SPACE);
         }
     }
@@ -118,15 +127,15 @@ public abstract class TileEntityExtraChemicalToItemFactory<RECIPE extends Mekani
         return 1;
     }
 
-    public boolean inputProducesOutput(int process, @NotNull ChemicalStack fallbackInput, @NotNull IInventorySlot outputSlot, boolean updateCache) {
+    public boolean inputProducesOutput(int process, @NotNull ChemicalResource fallbackInput, @NotNull IInventorySlot outputSlot, boolean updateCache) {
         return outputSlot.isEmpty() || getRecipeForInput(process, fallbackInput, outputSlot, updateCache) != null;
     }
 
     @Contract("null, _ -> false")
-    protected abstract boolean isCachedRecipeValid(@Nullable CachedRecipe<RECIPE> cached, @NotNull ChemicalStack stack);
+    protected abstract boolean isCachedRecipeValid(@Nullable CachedRecipe<RECIPE> cached, @NotNull ChemicalResource stack);
 
     @Nullable
-    protected RECIPE getRecipeForInput(int process, @NotNull ChemicalStack fallbackInput, @NotNull IInventorySlot outputSlot, boolean updateCache) {
+    protected RECIPE getRecipeForInput(int process, @NotNull ChemicalResource fallbackInput, @NotNull IInventorySlot outputSlot, boolean updateCache) {
         if (!CommonWorldTickHandler.flushTagAndRecipeCaches) {
             // If our recipe caches are valid, grab our cached recipe and see if it is still valid
             CachedRecipe<RECIPE> cached = getCachedRecipe(process);
@@ -150,38 +159,36 @@ public abstract class TileEntityExtraChemicalToItemFactory<RECIPE extends Mekani
     }
 
     @Nullable
-    protected abstract RECIPE findRecipe(int process, @NotNull ChemicalStack fallbackInput, @NotNull IInventorySlot outputSlot);
+    protected abstract RECIPE findRecipe(int process, @NotNull ChemicalResource fallbackInput, @NotNull IInventorySlot outputSlot);
 
-    public abstract boolean isChemicalValidForTank(@NotNull ChemicalStack stack);
+    public abstract boolean isChemicalValidForTank(@NotNull ChemicalResource stack);
 
     /**
      * Like isItemValidForSlot makes no assumptions about current stored types
      */
-    public abstract boolean isValidInputChemical(@NotNull ChemicalStack stack);
+    public abstract boolean isValidInputChemical(@NotNull ChemicalResource stack);
 
-    protected abstract int getNeededInput(RECIPE recipe, ChemicalStack inputStack);
+    protected abstract int getNeededInput(RECIPE recipe, ChemicalResource inputStack);
 
     @Override
-    public void parseUpgradeData(HolderLookup.Provider provider, @NotNull IUpgradeData upgradeData) {
+    public void parseUpgradeData(@NotNull IUpgradeData upgradeData, HolderLookup.Provider provider, TransactionContext transaction) {
         if (upgradeData instanceof ChemicalToItemUpgradeData data) {
             redstone = data.redstone;
             setControlType(data.controlType);
-            getEnergyContainer().setEnergy(data.energyContainer.getEnergy());
+            energyContainer.copyContents(data.energyContainer, transaction);
             sorting = data.sorting;
-            energySlot.deserializeNBT(provider, data.energySlot.serializeNBT(provider));
+            energySlot.copyContents(data.energySlot, transaction);
             System.arraycopy(data.progress, 0, progress, 0, data.progress.length);
             for (int i = 0; i < data.inputTanks.size(); i++) {
                 // Copy the stack using NBT so that if it is not actually valid due to a reload we don't crash
-                inputChemicalTanks.get(i).deserializeNBT(provider, data.inputTanks.get(i).serializeNBT(provider));
+                inputChemicalTanks.get(i).copyContents(data.inputTanks.get(i), transaction);
             }
             for (int i = 0; i < data.outputSlots.size(); i++) {
-                outputItemSlots.get(i).setStack(data.outputSlots.get(i).getStack());
+                outputItemSlots.get(i).copyContents(data.outputSlots.get(i), transaction);
             }
-            for (ITileComponent component : getComponents()) {
-                component.read(data.components, provider);
-            }
+            readUpgradeComponents(provider, data.components);
         } else {
-            super.parseUpgradeData(provider, upgradeData);
+            super.parseUpgradeData(upgradeData, provider, transaction);
         }
     }
 
@@ -189,7 +196,8 @@ public abstract class TileEntityExtraChemicalToItemFactory<RECIPE extends Mekani
     @ComputerMethod
     ChemicalStack getInput(int process) throws ComputerException {
         validateValidProcess(process);
-        return processInfoSlots[process].inputTank().getStack();
+        IChemicalTank inputTank = processInfoSlots[process].inputTank();
+        return inputTank.resource().toStack(inputTank.amountAsInt());
     }
 
     @ComputerMethod
@@ -201,33 +209,33 @@ public abstract class TileEntityExtraChemicalToItemFactory<RECIPE extends Mekani
     @ComputerMethod
     ItemStack getOutput(int process) throws ComputerException {
         validateValidProcess(process);
-        return processInfoSlots[process].outputSlot().getStack();
+        IInventorySlot outputSlot = processInfoSlots[process].outputSlot();
+        return outputSlot.resource().toStack(outputSlot.amountAsInt());
     }
     // End methods IComputerTile
 
     protected void sortInventoryOrTank() {
-        Map<ChemicalStack, CIRecipeProcessInfo<RECIPE>> processes = ChemicalStackMap.createTypeAndComponentsMap();
+        Map<ChemicalResource, CIRecipeProcessInfo<ChemicalResource, RECIPE>> processes = new HashMap<>();
         List<CIProcessInfo> emptyProcesses = new ArrayList<>();
         for (CIProcessInfo processInfo : processInfoSlots) {
             IChemicalTank inputTank = processInfo.inputTank();
             if (inputTank.isEmpty()) {
                 emptyProcesses.add(processInfo);
             } else {
-                ChemicalStack inputStack = inputTank.getStack();
-                CIRecipeProcessInfo<RECIPE> recipeProcessInfo = processes.computeIfAbsent(inputStack, i -> new CIRecipeProcessInfo<>());
+                ChemicalResource inputStack = inputTank.resource();
+                CIRecipeProcessInfo<ChemicalResource, RECIPE> recipeProcessInfo = processes.computeIfAbsent(inputStack, CIRecipeProcessInfo::new);
                 recipeProcessInfo.processes.add(processInfo);
-                recipeProcessInfo.totalCount += inputStack.getAmount();
+                recipeProcessInfo.totalCount += inputTank.amountAsLong();
                 if (recipeProcessInfo.lazyMinPerTank == null && !CommonWorldTickHandler.flushTagAndRecipeCaches) {
                     // If we don't have a lazily initialized min per slot calculation set for it yet
                     // and our cache is not invalid/out of date due to a reload
                     CachedRecipe<RECIPE> cachedRecipe = getCachedRecipe(processInfo.process());
                     if (isCachedRecipeValid(cachedRecipe, inputStack)) {
-                        recipeProcessInfo.chemical = inputStack;
                         recipeProcessInfo.recipe = cachedRecipe.getRecipe();
                         // And our current process has a cached recipe then set the lazily initialized per slot value
                         // Note: If something goes wrong, and we end up with zero as how much we need as an input
                         // we just bump the value up to one to make sure we properly handle it
-                        recipeProcessInfo.lazyMinPerTank = (info, factory) -> factory.getNeededInput(info.recipe, (ChemicalStack) info.chemical);
+                        recipeProcessInfo.lazyMinPerTank = (info, factory) -> factory.getNeededInput(info.recipe, info.item);
                     }
                 }
             }
@@ -236,10 +244,9 @@ public abstract class TileEntityExtraChemicalToItemFactory<RECIPE extends Mekani
             // If all input slots are empty, just exit
             return;
         }
-        for (Map.Entry<ChemicalStack, CIRecipeProcessInfo<RECIPE>> entry : processes.entrySet()) {
-            CIRecipeProcessInfo<RECIPE> recipeProcessInfo = entry.getValue();
+        for (Map.Entry<ChemicalResource, CIRecipeProcessInfo<ChemicalResource, RECIPE>> entry : processes.entrySet()) {
+            CIRecipeProcessInfo<ChemicalResource, RECIPE> recipeProcessInfo = entry.getValue();
             if (recipeProcessInfo.lazyMinPerTank == null) {
-                recipeProcessInfo.chemical = entry.getKey();
                 // If we don't have a lazy initializer for our minPerTank setup, that means that there is
                 // no valid cached recipe for any of the slots of this type currently, so we want to try and
                 // get the recipe we will have for the first slot, once we end up with more items in the stack
@@ -247,13 +254,11 @@ public abstract class TileEntityExtraChemicalToItemFactory<RECIPE extends Mekani
                     // Note: We put all of this logic in the lazy init, so that we don't actually call any of this
                     // until it is needed. That way if we have no empty slots and all our input slots are filled
                     // we don't do any extra processing here, and can properly short circuit
-                    ChemicalStack item = (ChemicalStack) info.chemical;
-                    ChemicalStack largerInput = item.copyWithAmount(Math.min(MAX_CHEMICAL * tier.processes, info.totalCount));
                     CIProcessInfo processInfo = info.processes.getFirst();
                     // Try getting a recipe for our input with a larger size, and update the cache if we find one
-                    info.recipe = factory.getRecipeForInput(processInfo.process(), largerInput, processInfo.outputSlot(), true);
+                    info.recipe = factory.getRecipeForInput(processInfo.process(), info.item, processInfo.outputSlot(), true);
                     if (info.recipe != null) {
-                        return factory.getNeededInput(info.recipe, largerInput);
+                        return factory.getNeededInput(info.recipe, info.item);
                     }
                     return 1;
                 };
@@ -269,9 +274,9 @@ public abstract class TileEntityExtraChemicalToItemFactory<RECIPE extends Mekani
         distributeItems(processes);
     }
 
-    protected void addEmptyTanksAsTargets(Map<ChemicalStack, CIRecipeProcessInfo<RECIPE>> processes, List<CIProcessInfo> emptyProcesses) {
-        for (Map.Entry<ChemicalStack, CIRecipeProcessInfo<RECIPE>> entry : processes.entrySet()) {
-            CIRecipeProcessInfo<RECIPE> recipeProcessInfo = entry.getValue();
+    protected void addEmptyTanksAsTargets(Map<ChemicalResource, CIRecipeProcessInfo<ChemicalResource, RECIPE>> processes, List<CIProcessInfo> emptyProcesses) {
+        for (Map.Entry<ChemicalResource, CIRecipeProcessInfo<ChemicalResource, RECIPE>> entry : processes.entrySet()) {
+            CIRecipeProcessInfo<ChemicalResource, RECIPE> recipeProcessInfo = entry.getValue();
             long minPerTank = recipeProcessInfo.getMinPerTank(this);
             long maxTanks = recipeProcessInfo.totalCount / minPerTank;
             if (maxTanks <= 1) {
@@ -285,7 +290,7 @@ public abstract class TileEntityExtraChemicalToItemFactory<RECIPE extends Mekani
                 continue;
             }
             // Note: This is some arbitrary input stack one of the stacks contained
-            ChemicalStack sourceStack = entry.getKey();
+            ChemicalResource sourceStack = entry.getKey();
             long emptyToAdd = maxTanks - processAmount;
             int added = 0;
             List<CIProcessInfo> toRemove = new ArrayList<>();
@@ -312,15 +317,15 @@ public abstract class TileEntityExtraChemicalToItemFactory<RECIPE extends Mekani
         }
     }
 
-    protected void distributeItems(Map<ChemicalStack, CIRecipeProcessInfo<RECIPE>> processes) {
-        for (Map.Entry<ChemicalStack, CIRecipeProcessInfo<RECIPE>> entry : processes.entrySet()) {
-            CIRecipeProcessInfo<RECIPE> recipeProcessInfo = entry.getValue();
+    protected void distributeItems(Map<ChemicalResource, CIRecipeProcessInfo<ChemicalResource, RECIPE>> processes) {
+        for (Map.Entry<ChemicalResource, CIRecipeProcessInfo<ChemicalResource, RECIPE>> entry : processes.entrySet()) {
+            CIRecipeProcessInfo<ChemicalResource, RECIPE> recipeProcessInfo = entry.getValue();
             long processAmount = recipeProcessInfo.processes.size();
             if (processAmount == 1) {
                 // If there is only one process with the item in it; short-circuit, no balancing is needed
                 continue;
             }
-            ChemicalStack item = entry.getKey();
+            ChemicalResource item = entry.getKey();
             // Note: This isn't based on any limits the slot may have (but we currently don't have any reduced ones
             // here, so it doesn't matter)
             long maxAmount = MAX_CHEMICAL * tier.processes;
@@ -382,53 +387,28 @@ public abstract class TileEntityExtraChemicalToItemFactory<RECIPE extends Mekani
                         remainder = 0;
                     }
                 }
-                if (inputTank.isEmpty()) {
-                    // Note: sizeForSlot should never be zero here as we would not have added
-                    // the empty slot to this item's distribution grouping if it would not
-                    // end up getting any items; check it just in case though before creating
-                    // a stack for the slot and setting it
-                    if (sizeForTank > 0) {
-                        // Note: We use setStackUnchecked here, as there is a very small chance that
-                        // the stack is not actually valid for the slot because of a reload causing
-                        // recipes to change. If this is the case, then we want to properly not crash,
-                        // but we would rather not add any extra overhead about revalidating the item
-                        // each time as it can get somewhat expensive.
-                        inputTank.setStackUnchecked(item.copyWithAmount(sizeForTank));
-                    }
-                } else {
-                    // Slot is not currently empty
-                    if (sizeForTank == 0) {
-                        // If the amount of the item we want to set it to is zero (all got used by earlier stacks, which
-                        // might
-                        // happen if the recipe requires a stacked input (minPerTank > 1)), then we need to set the slot
-                        // to empty
-                        inputTank.setEmpty();
-                    } else if (inputTank.getCapacity() != sizeForTank) {
-                        // Otherwise, if our slot doesn't already contain the amount we want it to,
-                        // we need to adjust how much is stored in it, and log an error if it changed
-                        // by a different amount then we expected
-                        // Note: We use setStackSize here rather than setStack to avoid an unnecessary stack copy call
-                        // as copying item stacks can sometimes be rather expensive in a heavily modded environment
-                        MekanismUtils.logMismatchedStackSize(sizeForTank, inputTank.setStackSize(sizeForTank, Action.EXECUTE));
-                    }
-                }
+                inputTank.setContents(item, sizeForTank, null);
             }
         }
     }
 
     public record CIProcessInfo(int process, @NotNull IChemicalTank inputTank, @NotNull IInventorySlot outputSlot) {}
 
-    protected static class CIRecipeProcessInfo<RECIPE extends MekanismRecipe<?>> {
+    protected static class CIRecipeProcessInfo<ITEM, RECIPE extends MekanismRecipe<?>> {
 
         private final List<CIProcessInfo> processes = new ArrayList<>();
         @Nullable
-        private ToIntBiFunction<CIRecipeProcessInfo<RECIPE>, TileEntityExtraChemicalToItemFactory<RECIPE, ?>> lazyMinPerTank;
-        private Object chemical;
+        private ToIntBiFunction<CIRecipeProcessInfo<ITEM, RECIPE>, TileEntityExtraChemicalToItemFactory<RECIPE>> lazyMinPerTank;
+        private final ITEM item;
         private RECIPE recipe;
         private long minPerTank = 1;
         private long totalCount;
 
-        public long getMinPerTank(TileEntityExtraChemicalToItemFactory<RECIPE, ?> factory) {
+        public CIRecipeProcessInfo(ITEM item) {
+            this.item = item;
+        }
+
+        public long getMinPerTank(TileEntityExtraChemicalToItemFactory<RECIPE> factory) {
             if (lazyMinPerTank != null) {
                 // Get the value lazily
                 minPerTank = Math.max(1, lazyMinPerTank.applyAsInt(this, factory));

@@ -11,9 +11,9 @@ import com.jerry.mekextras.common.tier.ExtraFactoryTier;
 import com.jerry.mekextras.common.util.ExtraEnumUtils;
 
 import mekanism.api.chemical.ChemicalStack;
-import mekanism.common.attachments.containers.ContainerType;
-import mekanism.common.attachments.containers.fluid.FluidTanksBuilder;
-import mekanism.common.attachments.containers.item.ItemSlotsBuilder;
+import mekanism.common.component.containers.type.ContainerType;
+import mekanism.common.component.containers.fluid.FluidTanksBuilder;
+import mekanism.common.component.containers.item.ItemSlotsBuilder;
 import mekanism.common.recipe.MekanismRecipeType;
 import mekanism.common.recipe.lookup.cache.InputRecipeCache;
 import mekanism.common.registration.impl.BlockDeferredRegister;
@@ -23,6 +23,7 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
@@ -37,6 +38,7 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.function.Function;
 
 public class ExtraAdvancedFactoryBlocks {
 
@@ -55,21 +57,21 @@ public class ExtraAdvancedFactoryBlocks {
         }
     }
 
-    private static <TILE extends TileEntityExtraAdvancedFactoryBase<?, ?>> BlockRegistryObject<BlockExtraAdvancedFactory<?>, ItemBlockExtraAdvancedFactory> registerAdvancedFactory(ExtraAdvancedFactory<TILE> type) {
+    private static <TILE extends TileEntityExtraAdvancedFactoryBase<?>> BlockRegistryObject<BlockExtraAdvancedFactory<?>, ItemBlockExtraAdvancedFactory> registerAdvancedFactory(ExtraAdvancedFactory<TILE> type) {
         ExtraFactoryTier tier = (ExtraFactoryTier) Objects.requireNonNull(type.get(ExtraAttributeTier.class)).tier();
-        BlockRegistryObject<BlockExtraAdvancedFactory<?>, ItemBlockExtraAdvancedFactory> factory = registerTieredBlock(tier, "_" + type.getAdvancedFactoryType().getRegistryNameComponent() + "_factory", () -> new BlockExtraAdvancedFactory<>(type), ItemBlockExtraAdvancedFactory::new);
+        BlockRegistryObject<BlockExtraAdvancedFactory<?>, ItemBlockExtraAdvancedFactory> factory = registerTieredBlock(tier, "_" + type.getAdvancedFactoryType().getRegistryNameComponent() + "_factory", properties -> new BlockExtraAdvancedFactory<>(type, properties), ItemBlockExtraAdvancedFactory::new);
         factory.forItemHolder(holder -> {
             int processes = tier.processes;
-            Predicate<ItemStack> recipeItemInputPredicate = switch (type.getAdvancedFactoryType()) {
+            Predicate<net.neoforged.neoforge.transfer.item.ItemResource> recipeItemInputPredicate = switch (type.getAdvancedFactoryType()) {
                 case OXIDIZING -> s -> MekanismRecipeType.OXIDIZING.getInputCache().containsInput(null, s);
                 case DISSOLVING -> s -> MekanismRecipeType.DISSOLUTION.getInputCache().containsInputA(null, s);
                 case PRESSURISED_REACTING -> s -> MekanismRecipeType.REACTION.getInputCache().containsInputA(null, s);
-                case LIQUIFYING -> TileEntityLiquifyingFactory::isValidInputStatic;
+                case LIQUIFYING -> s -> TileEntityLiquifyingFactory.isValidInputStatic(s.toStack());
                 case PIGMENT_EXTRACTING -> s -> MekanismRecipeType.PIGMENT_EXTRACTING.getInputCache().containsInput(null, s);
                 case PAINTING -> s -> MekanismRecipeType.PAINTING.getInputCache().containsInputA(null, s);
                 default -> null;
             };
-            Predicate<ChemicalStack> recipeChemicalInputPredicate = switch (type.getAdvancedFactoryType()) {
+            Predicate<mekanism.api.chemical.ChemicalResource> recipeChemicalInputPredicate = switch (type.getAdvancedFactoryType()) {
                 case DISSOLVING -> s -> MekanismRecipeType.DISSOLUTION.getInputCache().containsInputB(null, s);
                 case WASHING -> s -> MekanismRecipeType.WASHING.getInputCache().containsInputB(null, s);
                 case CRYSTALLIZING -> s -> MekanismRecipeType.CRYSTALLIZING.getInputCache().containsInput(null, s);
@@ -177,8 +179,8 @@ public class ExtraAdvancedFactoryBlocks {
     }
 
     private static <BLOCK extends Block, ITEM extends BlockItem> BlockRegistryObject<BLOCK, ITEM> registerTieredBlock(IAdvancedTier tier, String suffix,
-                                                                                                                      Supplier<? extends BLOCK> blockSupplier, BiFunction<BLOCK, Item.Properties, ITEM> itemCreator) {
-        return AF_BLOCKS.register(tier.getAdvanceTier().getLowerName() + suffix, blockSupplier, itemCreator);
+                                                                                                                      Function<BlockBehaviour.Properties, ? extends BLOCK> blockSupplier, BiFunction<BLOCK, Item.Properties, ITEM> itemCreator) {
+        return AF_BLOCKS.register(tier.getAdvanceTier().getLowerName() + suffix, properties -> blockSupplier.apply(properties.mapColor(tier.getAdvanceTier().getMapColor())), itemCreator);
     }
 
     /**

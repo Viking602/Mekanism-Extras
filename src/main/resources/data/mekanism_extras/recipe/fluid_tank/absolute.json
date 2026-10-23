@@ -1,15 +1,9 @@
 {
   "type": "mekanism:mek_data",
   "key": {
-    "A": {
-      "tag": "mekanism_extras:alloys/radiance"
-    },
-    "I": {
-      "tag": "c:ingots/iron"
-    },
-    "P": {
-      "item": "mekanism:ultimate_fluid_tank"
-    }
+    "A": "#mekanism_extras:alloys/radiance",
+    "I": "#c:ingots/iron",
+    "P": "mekanism:ultimate_fluid_tank"
   },
   "pattern": [
     "AIA",

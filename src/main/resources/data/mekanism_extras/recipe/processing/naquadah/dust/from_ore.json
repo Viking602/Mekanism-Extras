@@ -2,7 +2,7 @@
   "type": "mekanism:enriching",
   "input": {
     "count": 1,
-    "tag": "c:ores/naquadah"
+    "ingredient": "#c:ores/naquadah"
   },
   "output": {
     "count": 2,

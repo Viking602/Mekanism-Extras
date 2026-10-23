@@ -57,10 +57,10 @@ public class TileEntityExtraFactory$ComputerHandler extends ComputerMethodFactor
     }
 
     public static Object getInput_1(TileEntityExtraFactory subject, BaseComputerHelper helper) throws ComputerException {
-        return helper.convert(subject.getInput(helper.getInt(0)));
+        return helper.convert(subject.getInputSlot(helper.getInt(0)).asStack());
     }
 
     public static Object getOutput_1(TileEntityExtraFactory subject, BaseComputerHelper helper) throws ComputerException {
-        return helper.convert(subject.getOutput(helper.getInt(0)));
+        return helper.convert(subject.getOutputSlot(helper.getInt(0)).asStack());
     }
 }

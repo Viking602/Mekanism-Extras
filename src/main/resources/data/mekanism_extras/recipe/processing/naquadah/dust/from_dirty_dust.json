@@ -2,7 +2,7 @@
   "type": "mekanism:enriching",
   "input": {
     "count": 1,
-    "tag": "c:dirty_dusts/naquadah"
+    "ingredient": "#c:dirty_dusts/naquadah"
   },
   "output": {
     "count": 1,

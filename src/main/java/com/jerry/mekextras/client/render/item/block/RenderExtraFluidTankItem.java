@@ -1,48 +1,108 @@
 package com.jerry.mekextras.client.render.item.block;
 
-import com.jerry.mekextras.client.render.tileentity.RenderExtraFluidTank;
-
-import mekanism.api.fluid.IMekanismFluidHandler;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.serialization.MapCodec;
+import java.util.function.Consumer;
+import mekanism.client.ModelUtil;
 import mekanism.client.render.MekanismRenderer;
 import mekanism.client.render.RenderResizableCuboid;
-import mekanism.client.render.item.MekanismISTER;
-import mekanism.common.attachments.containers.ContainerType;
-
-import net.minecraft.client.renderer.MultiBufferSource;
+import mekanism.client.render.RenderResizableCuboid.TexturePicker;
+import com.jerry.mekextras.client.render.tileentity.RenderExtraFluidTank;
+import mekanism.common.capabilities.Capabilities;
+import mekanism.common.registries.MekanismBlocks;
+import mekanism.common.util.ItemAccessUtils;
+import mekanism.common.util.MekanismUtils;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Sheets;
-import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.block.BlockModelRenderState;
+import net.minecraft.client.renderer.special.SpecialModelRenderer;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.client.model.data.ModelData;
-import net.neoforged.neoforge.fluids.FluidStack;
+import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.common.util.Lazy;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import org.joml.Vector3fc;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import org.jetbrains.annotations.NotNull;
+@NullMarked
+public class RenderExtraFluidTankItem implements SpecialModelRenderer<RenderExtraFluidTankItem.TankRenderState> {
 
-public class RenderExtraFluidTankItem extends MekanismISTER {
-
-    public static final RenderExtraFluidTankItem EXTRA_RENDERER = new RenderExtraFluidTankItem();
+    private final Lazy<Vector3fc[]> extents = Lazy.of(() -> ModelUtil.computeExtents(MekanismBlocks.CREATIVE_FLUID_TANK));
 
     @Override
-    public void onResourceManagerReload(@NotNull ResourceManager resourceManager) {
-        // Note: We don't need to register this as a reload listener as we don't have an in code model or make use of
-        // this
-        // reload in any way
+    public void submit(@Nullable TankRenderState argument, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, int lightCoords, int overlayCoords, boolean hasFoil, int outlineColor) {
+        if (argument == null) {
+            return;
+        }
+        if (argument.contentsMaxY > 0) {
+            int lightToUse = MekanismRenderer.calculateGlowLight(lightCoords, argument.fluidLight);
+            RenderResizableCuboid.renderCube(RenderResizableCuboid.SideRender.NOT_DOWN, RenderExtraFluidTank.CONTENTS_MIN_XZ, RenderExtraFluidTank.CONTENTS_MIN_Y, RenderExtraFluidTank.CONTENTS_MIN_XZ, RenderExtraFluidTank.CONTENTS_MAX_XZ, argument.contentsMaxY, RenderExtraFluidTank.CONTENTS_MAX_XZ, poseStack, Sheets.translucentBlockSheet(), submitNodeCollector,
+                  argument.fluidColor, lightToUse, overlayCoords, RenderResizableCuboid.FaceDisplay.FRONT,
+                  Minecraft.getInstance().gameRenderer.getMainCamera().position(), null, argument.fluidTexture);
+        }
+        argument.blockModelRenderState.submit(poseStack, submitNodeCollector, lightCoords, overlayCoords, outlineColor);
     }
 
     @Override
-    public void renderByItem(@NotNull ItemStack stack, @NotNull ItemDisplayContext displayContext, @NotNull PoseStack matrix, @NotNull MultiBufferSource renderer,
-                             int light, int overlayLight) {
-        IMekanismFluidHandler attachment = ContainerType.FLUID.createHandler(stack);
-        if (attachment != null) {
-            FluidStack fluid = attachment.getFluidInTank(0);
+    public void getExtents(Consumer<Vector3fc> output) {
+        for (Vector3fc extent : extents.get()) {
+            output.accept(extent);
+        }
+    }
+
+    @Nullable
+    @Override
+    public TankRenderState extractArgument(ItemStack stack) {
+        ResourceHandler<FluidResource> handler = Capabilities.FLUID.getCapability(ItemAccessUtils.sideEffectFreeAccess(stack));
+        int fluidLight = 0;
+        int fluidColor = 0;
+        float contentsMaxY = 0;
+        TexturePicker fluidTexture = null;
+        if (handler != null) {
+            FluidResource fluid = handler.getResource(0);
             if (!fluid.isEmpty()) {
-                float fluidScale = (float) fluid.getAmount() / attachment.getTankCapacity(0);
-                if (fluidScale > 0) {
-                    RenderResizableCuboid.renderCube(RenderExtraFluidTank.getFluidModel(fluid, fluidScale), matrix, renderer.getBuffer(Sheets.translucentCullBlockSheet()), MekanismRenderer.getColorARGB(fluid, fluidScale), MekanismRenderer.calculateGlowLight(light, fluid), overlayLight, RenderResizableCuboid.FaceDisplay.FRONT, getCamera(), null);
-                }
+                float fluidScale = (float) handler.getAmountAsLong(0) / handler.getCapacityAsLong(0, fluid);
+                contentsMaxY = fluidScale > 0 ? RenderExtraFluidTank.contentsMaxY(fluidScale, MekanismUtils.lighterThanAirGas(fluid)) : 0;
+                fluidLight = fluid.getFluidType().getLightLevel();//todo - 26.1: used to be stack, is that important anywhere?
+                fluidColor = MekanismRenderer.getColorARGB(fluid, fluidScale);
+                fluidTexture = MekanismRenderer.getSinglePicker(MekanismRenderer.getFluidTexture(fluid, MekanismRenderer.FluidTextureType.STILL));
             }
         }
-        renderBlockItem(stack, displayContext, matrix, renderer, light, overlayLight, ModelData.EMPTY);
+        //todo - 26.1: do this with the block model from model manager (copy Energy cube item)
+        BlockState blockState = ((BlockItem) stack.getItem()).getBlock().defaultBlockState();
+        BlockModelRenderState blockModel = new BlockModelRenderState();
+        mc().getBlockModelResolver().update(blockModel, blockState, ModelUtil.BLOCK_DISPLAY_NO_CONTEXT);
+        blockModel.tintLayers().clear();
+        blockModel.tintLayers().add(-1);
+        blockModel.tintLayers().add(com.jerry.mekextras.client.model.ExtraTierTint.INSTANCE.calculate(stack, null, null));
+        return new TankRenderState(fluidLight, fluidColor, contentsMaxY, fluidTexture, blockModel);
+    }
+
+    public record TankRenderState(int fluidLight, int fluidColor, float contentsMaxY, @Nullable TexturePicker fluidTexture,
+                                  BlockModelRenderState blockModelRenderState) {
+    }
+
+    private static Minecraft mc() {
+        return Minecraft.getInstance();
+    }
+
+    public static class Unbaked implements SpecialModelRenderer.Unbaked<TankRenderState> {
+
+        public static final Unbaked INSTANCE = new Unbaked();
+        public static final MapCodec<Unbaked> MAP_CODEC = MapCodec.unit(INSTANCE);
+
+        @Override
+        @Nullable
+        public RenderExtraFluidTankItem bake(BakingContext context) {
+            return new RenderExtraFluidTankItem();
+        }
+
+        @Override
+        public MapCodec<Unbaked> type() {
+            return MAP_CODEC;
+        }
     }
 }

@@ -1,21 +1,11 @@
 {
   "type": "minecraft:crafting_shaped",
   "key": {
-    "A": {
-      "tag": "mekanism_extras:alloys/spectrum"
-    },
-    "C": {
-      "tag": "c:circuits/infinite"
-    },
-    "I": {
-      "tag": "c:pellets/plutonium"
-    },
-    "J": {
-      "tag": "c:pellets/polonium"
-    },
-    "P": {
-      "tag": "minecraft:planks"
-    }
+    "A": "#mekanism_extras:alloys/spectrum",
+    "C": "#c:circuits/infinite",
+    "I": "#c:pellets/plutonium",
+    "J": "#c:pellets/polonium",
+    "P": "#minecraft:planks"
   },
   "pattern": [
     "ACA",

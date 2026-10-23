@@ -6,11 +6,11 @@
   },
   "item_input": {
     "count": 1,
-    "item": "mekanism_extras:enriched_shining"
+    "ingredient": "mekanism_extras:enriched_shining"
   },
   "output": {
     "count": 1,
     "id": "mekanism_extras:enriched_spectrum"
   },
-  "per_tick_usage":true
+  "per_tick_usage": true
 }

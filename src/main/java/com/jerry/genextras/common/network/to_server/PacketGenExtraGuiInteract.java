@@ -12,7 +12,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.ByIdMap;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -28,7 +28,7 @@ import java.util.function.IntFunction;
  */
 public record PacketGenExtraGuiInteract(GenExtraGuiInteraction interaction, BlockPos tilePosition, double extra) implements IMekanismPacket {
 
-    public static final Type<PacketGenExtraGuiInteract> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath("generator_extras", "gui_interact"));
+    public static final Type<PacketGenExtraGuiInteract> TYPE = new Type<>(Identifier.fromNamespaceAndPath("generator_extras", "gui_interact"));
     public static final StreamCodec<ByteBuf, PacketGenExtraGuiInteract> STREAM_CODEC = StreamCodec.composite(
             GenExtraGuiInteraction.STREAM_CODEC, PacketGenExtraGuiInteract::interaction,
             BlockPos.STREAM_CODEC, PacketGenExtraGuiInteract::tilePosition,

@@ -4,7 +4,7 @@
   "energyRequired": 1000,
   "fluid_input": {
     "amount": 500,
-    "tag": "minecraft:lava"
+    "ingredient": "#minecraft:lava"
   },
   "chemical_input": {
     "amount": 500,
@@ -12,7 +12,7 @@
   },
   "item_input": {
     "count": 1,
-    "tag": "c:ingots/netherite"
+    "ingredient": "#c:ingots/netherite"
   },
   "chemical_output": {
     "amount": 240,

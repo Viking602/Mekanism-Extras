@@ -30,17 +30,17 @@ public class ItemBlockLargeCapRadioactiveWasteBarrel extends ItemBlockExtraToolt
     }
 
     @Override
-    protected void addStats(@NotNull ItemStack stack, @Nullable TooltipContext context, @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
-        tooltip.add(MekanismLang.CAPACITY_MB.translateColored(EnumColor.INDIGO, EnumColor.GRAY, TextUtils.format(getAdvancedTier().getStorage())));
+    protected void addStats(@NotNull ItemStack stack, net.neoforged.neoforge.transfer.access.ItemAccess itemAccess, TooltipContext context, net.minecraft.world.item.component.TooltipDisplay tooltipDisplay, java.util.function.Consumer<Component> tooltip, TooltipFlag flag) {
+        tooltip.accept(MekanismLang.CAPACITY_MB.translateColored(EnumColor.INDIGO, EnumColor.GRAY, TextUtils.format(getAdvancedTier().getStorage())));
         int ticks = getAdvancedTier().getProcessTicks();
         long decayAmount = getAdvancedTier().getDecayAmount();
         if (decayAmount == 0 || ticks == 1) {
-            tooltip.add(MekanismLang.WASTE_BARREL_DECAY_RATE.translateColored(EnumColor.INDIGO, EnumColor.GRAY, TextUtils.format(decayAmount)));
+            tooltip.accept(MekanismLang.WASTE_BARREL_DECAY_RATE.translateColored(EnumColor.INDIGO, EnumColor.GRAY, TextUtils.format(decayAmount)));
         } else {
             // Show decay rate to four decimals with no trailing zeros (but without decimals if it divides evenly)
-            tooltip.add(MekanismLang.WASTE_BARREL_DECAY_RATE.translateColored(EnumColor.INDIGO, EnumColor.GRAY,
+            tooltip.accept(MekanismLang.WASTE_BARREL_DECAY_RATE.translateColored(EnumColor.INDIGO, EnumColor.GRAY,
                     TextUtils.format(UnitDisplayUtils.roundDecimals(decayAmount / (double) ticks, 4))));
-            tooltip.add(MekanismLang.WASTE_BARREL_DECAY_RATE_ACTUAL.translateColored(EnumColor.INDIGO, EnumColor.GRAY, TextUtils.format(decayAmount),
+            tooltip.accept(MekanismLang.WASTE_BARREL_DECAY_RATE_ACTUAL.translateColored(EnumColor.INDIGO, EnumColor.GRAY, TextUtils.format(decayAmount),
                     EnumColor.GRAY, TextUtils.format(ticks)));
         }
     }

@@ -1,15 +1,13 @@
 package com.jerry.mekextras.common.tile.multiblock;
 
-import com.jerry.mekextras.MekanismExtras;
 import com.jerry.mekextras.common.content.matrix.ReinforcedMatrixMultiblockData;
-import com.jerry.mekextras.common.registries.ExtraBlocks;
-import com.jerry.mekextras.common.registries.ExtraContainerTypes;
-
 import mekanism.common.inventory.container.MekanismContainer;
 import mekanism.common.inventory.container.sync.dynamic.SyncMapper;
-import mekanism.common.lib.multiblock.MultiblockManager;
+import mekanism.common.lib.multiblock.MekanismMultiblocks;
+import mekanism.common.lib.multiblock.MultiblockType;
+import com.jerry.mekextras.common.registries.ExtraBlocks;
+import com.jerry.mekextras.common.registries.ExtraContainerTypes;
 import mekanism.common.tile.prefab.TileEntityMultiblock;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.world.level.block.Block;
@@ -31,8 +29,8 @@ public class TileEntityReinforcedInductionCasing extends TileEntityMultiblock<Re
     }
 
     @Override
-    public MultiblockManager<ReinforcedMatrixMultiblockData> getManager() {
-        return MekanismExtras.matrixManager;
+    public MultiblockType<ReinforcedMatrixMultiblockData> getMultiblockType() {
+        return com.jerry.mekextras.MekanismExtras.matrixManager;
     }
 
     @Override

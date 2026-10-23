@@ -1,18 +1,23 @@
 package com.jerry.genextras.client.gui;
 
-import com.jerry.genextras.client.gui.element.GuiNaquadahReactorTab;
-import com.jerry.genextras.common.content.naquadah.NaquadahReactorMultiblockData;
-import com.jerry.genextras.common.tile.naquadah.TileEntityNaquadahReactorController;
-
-import mekanism.client.gui.element.gauge.*;
+import mekanism.client.gui.element.gauge.GaugeType;
+import mekanism.client.gui.element.gauge.GuiChemicalGauge;
+import mekanism.client.gui.element.gauge.GuiEnergyGauge;
+import mekanism.client.gui.element.gauge.GuiFluidGauge;
+import mekanism.client.gui.element.gauge.GuiNumberGauge;
+import mekanism.client.gui.element.gauge.GuiNumberGauge.INumberInfoHandler;
 import mekanism.client.gui.element.progress.GuiProgress;
 import mekanism.client.gui.element.progress.ProgressType;
 import mekanism.client.render.MekanismRenderer;
+import mekanism.client.render.MekanismRenderer.FluidTextureType;
 import mekanism.common.inventory.container.tile.EmptyTileContainer;
 import mekanism.common.util.MekanismUtils;
-import mekanism.common.util.UnitDisplayUtils;
+import mekanism.common.util.UnitDisplayUtils.TemperatureUnit;
+import com.jerry.genextras.client.gui.element.GuiNaquadahReactorTab;
+import com.jerry.genextras.client.gui.element.GuiNaquadahReactorTab.NaquadahReactorTab;
 import mekanism.generators.common.GeneratorsLang;
-
+import com.jerry.genextras.common.content.naquadah.NaquadahReactorMultiblockData;
+import com.jerry.genextras.common.tile.naquadah.TileEntityNaquadahReactorController;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -29,11 +34,10 @@ public class GuiNaquadahReactorHeat extends GuiNaquadahReactorInfo {
     @Override
     protected void addGuiElements() {
         super.addGuiElements();
-        addRenderableWidget(new GuiNumberGauge(new GuiNumberGauge.INumberInfoHandler() {
-
+        addRenderableWidget(new GuiNumberGauge(new INumberInfoHandler() {
             @Override
             public TextureAtlasSprite getIcon() {
-                return MekanismRenderer.getBaseFluidTexture(Fluids.LAVA, MekanismRenderer.FluidTextureType.STILL);
+                return MekanismRenderer.getBaseFluidTexture(Fluids.LAVA, FluidTextureType.STILL);
             }
 
             @Override
@@ -48,18 +52,17 @@ public class GuiNaquadahReactorHeat extends GuiNaquadahReactorInfo {
 
             @Override
             public Component getText() {
-                return GeneratorsLang.REACTOR_PLASMA.translate(MekanismUtils.getTemperatureDisplay(getLevel(), UnitDisplayUtils.TemperatureUnit.KELVIN, true));
+                return GeneratorsLang.REACTOR_PLASMA.translate(MekanismUtils.getTemperatureDisplay(getLevel(), TemperatureUnit.KELVIN, true));
             }
         }, GaugeType.STANDARD, this, 12, 50));
         addRenderableWidget(new GuiProgress(() -> {
             NaquadahReactorMultiblockData multiblock = tile.getMultiblock();
             return multiblock.getLastPlasmaTemp() > multiblock.getLastCaseTemp();
         }, ProgressType.SMALL_RIGHT, this, 34, 76));
-        addRenderableWidget(new GuiNumberGauge(new GuiNumberGauge.INumberInfoHandler() {
-
+        addRenderableWidget(new GuiNumberGauge(new INumberInfoHandler() {
             @Override
             public TextureAtlasSprite getIcon() {
-                return MekanismRenderer.getBaseFluidTexture(Fluids.LAVA, MekanismRenderer.FluidTextureType.STILL);
+                return MekanismRenderer.getBaseFluidTexture(Fluids.LAVA, FluidTextureType.STILL);
             }
 
             @Override
@@ -74,18 +77,18 @@ public class GuiNaquadahReactorHeat extends GuiNaquadahReactorInfo {
 
             @Override
             public Component getText() {
-                return GeneratorsLang.REACTOR_CASE.translate(MekanismUtils.getTemperatureDisplay(getLevel(), UnitDisplayUtils.TemperatureUnit.KELVIN, true));
+                return GeneratorsLang.REACTOR_CASE.translate(MekanismUtils.getTemperatureDisplay(getLevel(), TemperatureUnit.KELVIN, true));
             }
         }, GaugeType.STANDARD, this, 66, 50));
-        addRenderableWidget(new GuiProgress(() -> tile.getMultiblock().getCaseTemp() > 0, ProgressType.SMALL_RIGHT, this, 88, 61));
+        addRenderableWidget(new GuiProgress(() -> tile.getMultiblock().getLastCaseTemp() > 0, ProgressType.SMALL_RIGHT, this, 88, 61));
         addRenderableWidget(new GuiProgress(() -> {
             NaquadahReactorMultiblockData multiblock = tile.getMultiblock();
-            return multiblock.getCaseTemp() > 0 && !multiblock.waterTank.isEmpty() && multiblock.steamTank.getStored() < multiblock.steamTank.getCapacity();
+            return multiblock.getLastCaseTemp() > 0 && !multiblock.waterTank.isEmpty() && multiblock.steamTank.amountAsLong() < multiblock.steamTank.capacityAsLong(multiblock.steamTank.resource());
         }, ProgressType.SMALL_RIGHT, this, 88, 91));
-        addRenderableWidget(new GuiFluidGauge(() -> tile.getMultiblock().waterTank, () -> tile.getFluidTanks(null), GaugeType.SMALL, this, 120, 84));
-        addRenderableWidget(new GuiChemicalGauge(() -> tile.getMultiblock().steamTank, () -> tile.getChemicalTanks(null), GaugeType.SMALL, this, 156, 84));
-        addRenderableWidget(new GuiEnergyGauge(tile.getMultiblock().energyContainer, GaugeType.SMALL, this, 120, 46));
-        addRenderableWidget(new GuiNaquadahReactorTab(this, tile, GuiNaquadahReactorTab.NaquadahReactorTab.FUEL));
-        addRenderableWidget(new GuiNaquadahReactorTab(this, tile, GuiNaquadahReactorTab.NaquadahReactorTab.STAT));
+        addRenderableWidget(new GuiFluidGauge(() -> tile.getMultiblock().waterTank, tile::getFluidTanks, GaugeType.SMALL, this, 120, 84));
+        addRenderableWidget(new GuiChemicalGauge(() -> tile.getMultiblock().steamTank, tile::getChemicalTanks, GaugeType.SMALL, this, 156, 84));
+        addRenderableWidget(new GuiEnergyGauge(tile.getMultiblock().energyContainer(), GaugeType.SMALL, this, 120, 46));
+        addRenderableWidget(new GuiNaquadahReactorTab(this, tile, NaquadahReactorTab.FUEL));
+        addRenderableWidget(new GuiNaquadahReactorTab(this, tile, NaquadahReactorTab.STAT));
     }
 }

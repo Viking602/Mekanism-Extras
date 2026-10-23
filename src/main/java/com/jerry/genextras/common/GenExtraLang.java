@@ -2,12 +2,12 @@ package com.jerry.genextras.common;
 
 import com.jerry.mekextras.MekanismExtras;
 
-import mekanism.api.annotations.NothingNullByDefault;
+import org.jspecify.annotations.NullMarked;
 import mekanism.api.text.ILangEntry;
 
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 
-@NothingNullByDefault
+@NullMarked
 public enum GenExtraLang implements ILangEntry {
 
     NAQUADAH_REACTOR("reactor", "naquadah_reactor"),

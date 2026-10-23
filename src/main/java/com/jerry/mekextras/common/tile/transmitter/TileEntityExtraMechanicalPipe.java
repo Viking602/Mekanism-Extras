@@ -1,49 +1,25 @@
 package com.jerry.mekextras.common.tile.transmitter;
 
+import com.mojang.serialization.Codec;
+import mekanism.api.fluid.IFluidTank;
 import com.jerry.mekextras.api.tier.AdvancedTier;
-import com.jerry.mekextras.common.content.network.transmitter.ExtraMechanicalPipe;
-import com.jerry.mekextras.common.registries.ExtraBlocks;
-
-import mekanism.api.SerializationConstants;
-import mekanism.api.fluid.IExtendedFluidTank;
 import mekanism.common.block.states.BlockStateHelper;
 import mekanism.common.block.states.TransmitterType;
 import mekanism.common.capabilities.Capabilities;
-import mekanism.common.capabilities.fluid.DynamicFluidHandler;
-import mekanism.common.capabilities.resolver.manager.FluidHandlerManager;
 import mekanism.common.content.network.FluidNetwork;
-import mekanism.common.integration.computer.IComputerTile;
-import mekanism.common.integration.computer.annotation.ComputerMethod;
-import mekanism.common.lib.transmitter.ConnectionType;
-
+import mekanism.common.content.network.transmitter.MechanicalPipe;
+import com.jerry.mekextras.common.content.network.transmitter.ExtraMechanicalPipe;
+import com.jerry.mekextras.common.registries.ExtraBlocks;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.Collections;
-import java.util.List;
-
-public class TileEntityExtraMechanicalPipe extends TileEntityExtraTransmitter implements IComputerTile {
-
-    private final FluidHandlerManager fluidHandlerManager;
+public class TileEntityExtraMechanicalPipe extends TileEntityExtraResourceTransmitter<FluidResource, IFluidTank, FluidNetwork, MechanicalPipe> {
 
     public TileEntityExtraMechanicalPipe(Holder<Block> blockProvider, BlockPos pos, BlockState state) {
-        super(blockProvider, pos, state);
-        addCapabilityResolver(fluidHandlerManager = new FluidHandlerManager(direction -> {
-            ExtraMechanicalPipe pipe = getTransmitter();
-            if (direction != null && (pipe.getConnectionTypeRaw(direction) == ConnectionType.NONE) || pipe.isRedstoneActivated()) {
-                return Collections.emptyList();
-            }
-            return pipe.getFluidTanks(direction);
-        }, new DynamicFluidHandler(this::getFluidTanks, getExtractPredicate(), getInsertPredicate(), null)));
+        super(blockProvider, pos, state, Capabilities.FLUID);
     }
 
     @Override
@@ -52,24 +28,20 @@ public class TileEntityExtraMechanicalPipe extends TileEntityExtraTransmitter im
     }
 
     @Override
-    public ExtraMechanicalPipe getTransmitter() {
-        return (ExtraMechanicalPipe) super.getTransmitter();
-    }
-
-    @Override
-    protected void onUpdateServer() {
-        getTransmitter().pullFromAcceptors();
-        super.onUpdateServer();
-    }
+    public ExtraMechanicalPipe getTransmitter() { return (ExtraMechanicalPipe) super.getTransmitter(); }
 
     @Override
     public TransmitterType getTransmitterType() {
         return TransmitterType.MECHANICAL_PIPE;
     }
 
-    @NotNull
     @Override
-    protected BlockState upgradeResult(@NotNull BlockState current, @NotNull AdvancedTier tier) {
+    protected Codec<FluidResource> resourceCodec() {
+        return FluidResource.CODEC;
+    }
+
+    @Override
+    protected BlockState upgradeResult(BlockState current, AdvancedTier tier) {
         return BlockStateHelper.copyStateData(current, switch (tier) {
             case ABSOLUTE -> ExtraBlocks.ABSOLUTE_MECHANICAL_PIPE;
             case SUPREME -> ExtraBlocks.SUPREME_MECHANICAL_PIPE;
@@ -78,80 +50,10 @@ public class TileEntityExtraMechanicalPipe extends TileEntityExtraTransmitter im
         });
     }
 
-    @NotNull
-    @Override
-    public CompoundTag getUpdateTag(HolderLookup.@NotNull Provider provider) {
-        // Note: We add the stored information to the initial update tag and not to the one we sync on side changes
-        // which uses getReducedUpdateTag
-        CompoundTag updateTag = super.getUpdateTag(provider);
-        if (getTransmitter().hasTransmitterNetwork()) {
-            FluidNetwork network = getTransmitter().getTransmitterNetwork();
-            updateTag.put(SerializationConstants.FLUID, network.lastFluid.saveOptional(provider));
-            updateTag.putFloat(SerializationConstants.SCALE, network.currentScale);
-        }
-        return updateTag;
-    }
-
-    private List<IExtendedFluidTank> getFluidTanks(@Nullable Direction side) {
-        return fluidHandlerManager.getContainers(side);
-    }
-
-    @Override
-    public void sideChanged(@NotNull Direction side, @NotNull ConnectionType old, @NotNull ConnectionType type) {
-        super.sideChanged(side, old, type);
-        if (type == ConnectionType.NONE) {
-            // We no longer have a capability, invalidate it, which will also notify the level
-            invalidateCapability(Capabilities.FLUID.block(), side);
-        } else if (old == ConnectionType.NONE) {
-            // Notify any listeners to our position that we now do have a capability
-            // Note: We don't invalidate our impls because we know they are already invalid, so we can short circuit
-            // setting them to null from null
-            invalidateCapabilities();
-        }
-    }
-
-    @Override
-    public void redstoneChanged(boolean powered) {
-        super.redstoneChanged(powered);
-        if (powered) {
-            // The transmitter now is powered by redstone and previously was not
-            // Note: While at first glance the below invalidation may seem over aggressive, it is not actually that
-            // aggressive as
-            // if a cap has not been initialized yet on a side then invalidating it will just NO-OP
-            invalidateCapabilityAll(Capabilities.FLUID.block());
-        } else {
-            // Notify any listeners to our position that we now do have a capability
-            // Note: We don't invalidate our impls because we know they are already invalid, so we can short circuit
-            // setting them to null from null
-            invalidateCapabilities();
-        }
-    }
-
-    // Methods relating to IComputerTile
+    //Methods relating to IComputerTile
     @Override
     public String getComputerName() {
         return getTransmitter().getTier().getBaseTier().getLowerName() + "MechanicalPipe";
     }
-
-    @ComputerMethod
-    FluidStack getBuffer() {
-        return getTransmitter().getBufferWithFallback();
-    }
-
-    @ComputerMethod
-    long getCapacity() {
-        ExtraMechanicalPipe pipe = getTransmitter();
-        return pipe.hasTransmitterNetwork() ? pipe.getTransmitterNetwork().getCapacity() : pipe.getCapacity();
-    }
-
-    @ComputerMethod
-    long getNeeded() {
-        return getCapacity() - getBuffer().getAmount();
-    }
-
-    @ComputerMethod
-    double getFilledPercentage() {
-        return getBuffer().getAmount() / (double) getCapacity();
-    }
-    // End methods IComputerTile
+    //End methods IComputerTile
 }

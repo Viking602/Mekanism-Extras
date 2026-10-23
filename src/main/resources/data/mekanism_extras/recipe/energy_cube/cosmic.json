@@ -1,18 +1,10 @@
 {
   "type": "mekanism:mek_data",
   "key": {
-    "A": {
-      "tag": "mekanism_extras:alloys/shining"
-    },
-    "E": {
-      "item": "mekanism:energy_tablet"
-    },
-    "I": {
-      "tag": "c:ingots/refined_obsidian"
-    },
-    "P": {
-      "item": "mekanism_extras:supreme_energy_cube"
-    }
+    "A": "#mekanism_extras:alloys/shining",
+    "E": "mekanism:energy_tablet",
+    "I": "#c:ingots/refined_obsidian",
+    "P": "mekanism_extras:supreme_energy_cube"
   },
   "pattern": [
     "AEA",

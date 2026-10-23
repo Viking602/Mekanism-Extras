@@ -1,12 +1,8 @@
 {
   "type": "minecraft:crafting_shaped",
   "key": {
-    "A": {
-      "item": "mekanism_extras:alloy_shining"
-    },
-    "P": {
-      "item": "mekanism_extras:supreme_mechanical_pipe"
-    }
+    "A": "mekanism_extras:alloy_shining",
+    "P": "mekanism_extras:supreme_mechanical_pipe"
   },
   "pattern": [
     "PPP",

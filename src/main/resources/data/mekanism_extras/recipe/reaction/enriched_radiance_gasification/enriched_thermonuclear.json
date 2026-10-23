@@ -3,7 +3,7 @@
   "duration": 60,
   "fluid_input": {
     "amount": 120,
-    "tag": "minecraft:lava"
+    "ingredient": "#minecraft:lava"
   },
   "chemical_input": {
     "amount": 120,
@@ -11,7 +11,7 @@
   },
   "item_input": {
     "count": 1,
-    "tag": "mekanism_extras:enriched/radiance"
+    "ingredient": "#mekanism_extras:enriched/radiance"
   },
   "item_output": {
     "count": 1,

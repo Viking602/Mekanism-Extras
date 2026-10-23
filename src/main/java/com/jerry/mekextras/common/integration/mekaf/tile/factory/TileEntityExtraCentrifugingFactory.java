@@ -1,12 +1,18 @@
 package com.jerry.mekextras.common.integration.mekaf.tile.factory;
+import com.jerry.mekextras.api.ExtraUpgrade;
+import com.jerry.mekextras.api.mixin.IMixinMachineEnergyContainer;
+import com.jerry.mekextras.common.block.attribute.ExtraAttribute;
+import com.jerry.mekextras.common.util.ExtraUpgradeUtils;
 
 import com.jerry.mekextras.common.integration.mekaf.tile.factory.base.TileEntityExtraChemicalToChemicalFactory;
+import com.jerry.mekaf.common.upgrade.ChemicalToChemicalUpgradeData;
 
 import mekanism.api.IContentsListener;
 import mekanism.api.RelativeSide;
 import mekanism.api.Upgrade;
-import mekanism.api.chemical.ChemicalStack;
+import mekanism.api.chemical.ChemicalResource;
 import mekanism.api.chemical.IChemicalTank;
+import mekanism.api.inventory.IInventorySlot;
 import mekanism.api.math.MathUtils;
 import mekanism.api.recipes.ChemicalToChemicalRecipe;
 import mekanism.api.recipes.cache.CachedRecipe;
@@ -14,18 +20,13 @@ import mekanism.api.recipes.cache.CachedRecipe.OperationTracker.RecipeError;
 import mekanism.api.recipes.cache.OneInputCachedRecipe;
 import mekanism.client.recipe_viewer.type.IRecipeViewerRecipeType;
 import mekanism.client.recipe_viewer.type.RecipeViewerRecipeType;
-import mekanism.common.capabilities.holder.slot.InventorySlotHelper;
+import mekanism.common.capabilities.holder.container.MekContainerHelper;
 import mekanism.common.lib.transmitter.TransmissionType;
 import mekanism.common.recipe.IMekanismRecipeTypeProvider;
 import mekanism.common.recipe.MekanismRecipeType;
 import mekanism.common.recipe.lookup.ISingleRecipeLookupHandler.ChemicalRecipeLookupHandler;
 import mekanism.common.recipe.lookup.cache.InputRecipeCache.SingleChemical;
-import mekanism.common.tile.component.TileComponentEjector;
-import mekanism.common.tile.component.config.ConfigInfo;
-import mekanism.common.tile.component.config.DataType;
-import mekanism.common.tile.component.config.slot.ChemicalSlotInfo;
 import mekanism.common.tile.interfaces.IBoundingBlock;
-import mekanism.common.upgrade.IUpgradeData;
 import mekanism.common.util.UpgradeUtils;
 
 import net.minecraft.core.BlockPos;
@@ -36,17 +37,15 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.common.util.TriPredicate;
 
-import com.jerry.mekaf.common.content.blocktype.AdvancedFactoryType;
-import com.jerry.mekaf.common.upgrade.ChemicalToChemicalUpgradeData;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Set;
 
-public class TileEntityExtraCentrifugingFactory extends TileEntityExtraChemicalToChemicalFactory<ChemicalToChemicalRecipe, AdvancedFactoryType> implements IBoundingBlock, ChemicalRecipeLookupHandler<ChemicalToChemicalRecipe> {
+public class TileEntityExtraCentrifugingFactory extends TileEntityExtraChemicalToChemicalFactory<ChemicalToChemicalRecipe> implements IBoundingBlock, ChemicalRecipeLookupHandler<ChemicalToChemicalRecipe> {
 
-    protected static final TriPredicate<ChemicalToChemicalRecipe, ChemicalStack, ChemicalStack> OUTPUT_CHECK = (recipe, input, output) -> output.isEmpty() || ChemicalStack.isSameChemical(recipe.getOutput(input), output);
+    protected static final TriPredicate<ChemicalToChemicalRecipe, ChemicalResource, ChemicalResource> OUTPUT_CHECK = (recipe, input, output) -> output.isEmpty() || output.is(recipe.getOutput(input).typeHolder());
     private static final List<RecipeError> TRACKED_ERROR_TYPES = List.of(
             RecipeError.NOT_ENOUGH_ENERGY,
             RecipeError.NOT_ENOUGH_ENERGY_REDUCED_RATE,
@@ -55,47 +54,39 @@ public class TileEntityExtraCentrifugingFactory extends TileEntityExtraChemicalT
             RecipeError.INPUT_DOESNT_PRODUCE_OUTPUT);
     private static final Set<RecipeError> GLOBAL_ERROR_TYPES = Set.of(RecipeError.NOT_ENOUGH_ENERGY);
 
-    public TileEntityExtraCentrifugingFactory(Holder<Block> blockProvider, BlockPos pos, BlockState state, AdvancedFactoryType type) {
-        super(blockProvider, pos, state, TRACKED_ERROR_TYPES, GLOBAL_ERROR_TYPES, type);
-        ConfigInfo config = configComponent.getConfig(TransmissionType.CHEMICAL);
-        if (config != null) {
-            config.addSlotInfo(DataType.INPUT, new ChemicalSlotInfo(true, false, inputChemicalTanks));
-            List<IChemicalTank> ioTank = outputChemicalTanks;
-            ioTank.addAll(inputChemicalTanks);
-            config.addSlotInfo(DataType.INPUT_OUTPUT, new ChemicalSlotInfo(true, true, ioTank));
-        }
+    public TileEntityExtraCentrifugingFactory(Holder<Block> blockProvider, BlockPos pos, BlockState state) {
+        super(blockProvider, pos, state, TRACKED_ERROR_TYPES, GLOBAL_ERROR_TYPES);
         configComponent.addDisabledSides(RelativeSide.TOP);
 
-        ejectorComponent = new TileComponentEjector(this);
         ejectorComponent.setOutputData(configComponent, TransmissionType.ITEM, TransmissionType.CHEMICAL)
                 .setCanTankEject(tank -> !inputChemicalTanks.contains(tank));
     }
 
     @Override
-    protected void addSlots(InventorySlotHelper builder, IContentsListener listener, IContentsListener updateSortingListener) {}
+    protected void addSlots(MekContainerHelper<IInventorySlot> builder, IContentsListener listener, IContentsListener updateSortingListener) {}
 
     @Override
-    protected boolean isCachedRecipeValid(@Nullable CachedRecipe<ChemicalToChemicalRecipe> cached, @NotNull ChemicalStack stack) {
+    protected boolean isCachedRecipeValid(@Nullable CachedRecipe<ChemicalToChemicalRecipe> cached, @NotNull ChemicalResource stack) {
         return cached != null && cached.getRecipe().getInput().testType(stack);
     }
 
     @Override
-    protected @Nullable ChemicalToChemicalRecipe findRecipe(int process, @NotNull ChemicalStack fallbackInput, @NotNull IChemicalTank outputSlot) {
-        return getRecipeType().getInputCache().findTypeBasedRecipe(level, fallbackInput, outputSlot.getStack(), OUTPUT_CHECK);
+    protected @Nullable ChemicalToChemicalRecipe findRecipe(int process, @NotNull ChemicalResource fallbackInput, @NotNull IChemicalTank outputTank) {
+        return getRecipeType().getInputCache().findTypeBasedRecipe(level, fallbackInput, outputTank.resource(), OUTPUT_CHECK);
     }
 
     @Override
-    public boolean isChemicalValidForTank(@NotNull ChemicalStack stack) {
+    public boolean isChemicalValidForTank(@NotNull ChemicalResource stack) {
         return containsRecipe(stack);
     }
 
     @Override
-    public boolean isValidInputChemical(@NotNull ChemicalStack stack) {
+    public boolean isValidInputChemical(@NotNull ChemicalResource stack) {
         return containsRecipe(stack);
     }
 
     @Override
-    protected int getNeededInput(ChemicalToChemicalRecipe recipe, ChemicalStack inputStack) {
+    protected int getNeededInput(ChemicalToChemicalRecipe recipe, ChemicalResource inputStack) {
         return MathUtils.clampToInt(recipe.getInput().getNeededAmount(inputStack));
     }
 
@@ -116,7 +107,7 @@ public class TileEntityExtraCentrifugingFactory extends TileEntityExtraChemicalT
 
     @Override
     public @NotNull CachedRecipe<ChemicalToChemicalRecipe> createNewCachedRecipe(@NotNull ChemicalToChemicalRecipe recipe, int cacheIndex) {
-        return OneInputCachedRecipe.chemicalToChemical(recipe, recheckAllRecipeErrors[cacheIndex], chemicalInputHandlers[cacheIndex], chemicalOutputHandlers[cacheIndex])
+        return new OneInputCachedRecipe<>(recipe, recheckAllRecipeErrors[cacheIndex], chemicalInputHandlers[cacheIndex], chemicalOutputHandlers[cacheIndex])
                 .setErrorsChanged(errors -> errorTracker.onErrorsChanged(errors, cacheIndex))
                 .setCanHolderFunction(this::canFunction)
                 // 一定要更改这里，不然会导致能量显示错误
@@ -124,14 +115,6 @@ public class TileEntityExtraCentrifugingFactory extends TileEntityExtraChemicalT
                 .setOnFinish(this::markForSave)
                 .setEnergyRequirements(energyContainer::getEnergyPerTick, energyContainer)
                 .setBaselineMaxOperations(() -> baselineMaxOperations);
-    }
-
-    @Override
-    public void recalculateUpgrades(Upgrade upgrade) {
-        super.recalculateUpgrades(upgrade);
-        if (upgrade == Upgrade.SPEED) {
-            baselineMaxOperations = (int) Math.pow(2, upgradeComponent.getUpgrades(Upgrade.SPEED));
-        }
     }
 
     // 更改加速升级的显示的，默认是10x，气体工厂是256x，当然只有速度升级需要更改
@@ -142,8 +125,8 @@ public class TileEntityExtraCentrifugingFactory extends TileEntityExtraChemicalT
     }
 
     @Override
-    public @Nullable IUpgradeData getUpgradeData(HolderLookup.Provider provider) {
-        return new ChemicalToChemicalUpgradeData(provider, redstone, getControlType(), getEnergyContainer(),
-                progress, energySlot, inputChemicalTanks, outputChemicalTanks, isSorting(), getComponents());
+    public @Nullable ChemicalToChemicalUpgradeData getUpgradeData(HolderLookup.Provider provider) {
+        return new ChemicalToChemicalUpgradeData(provider, redstone, getControlType(), energyContainer,
+                progress, energySlot, inputChemicalTanks, outputChemicalTanks, isSorting(), getComponents(), problemPath());
     }
 }

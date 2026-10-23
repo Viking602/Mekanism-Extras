@@ -54,8 +54,8 @@ public class TileEntityExtraAlloyingFactory extends TileEntityExtraItemToItemFac
     LimitedInputInventorySlot extraSlot;
     LimitedInputInventorySlot secondExtraSlot;
 
-    private final IInputHandler<@NotNull ItemStack> extraInputHandler;
-    private final IInputHandler<@NotNull ItemStack> secondExtraInputHandler;
+    private final IInputHandler<net.minecraft.world.item.Item, ItemStack> extraInputHandler;
+    private final IInputHandler<net.minecraft.world.item.Item, ItemStack> secondExtraInputHandler;
 
     public TileEntityExtraAlloyingFactory(Holder<Block> blockProvider, BlockPos pos, BlockState state) {
         super(blockProvider, pos, state, TRACKED_ERROR_TYPES, GLOBAL_ERROR_TYPES);

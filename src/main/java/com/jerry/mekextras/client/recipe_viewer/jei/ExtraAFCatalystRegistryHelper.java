@@ -13,7 +13,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.ItemLike;
 
 import com.jerry.mekaf.common.block.attribute.AttributeAdvancedFactoryType;
-import mezz.jei.api.recipe.RecipeType;
+import mezz.jei.api.recipe.types.IRecipeType;
 import mezz.jei.api.registration.IRecipeCatalystRegistration;
 
 import java.util.List;
@@ -28,7 +28,7 @@ public class ExtraAFCatalystRegistryHelper {
         }
     }
 
-    public static void register(IRecipeCatalystRegistration registry, RecipeType<?> recipeType, List<ItemLike> workstations) {
+    public static void register(IRecipeCatalystRegistration registry, IRecipeType<?> recipeType, List<ItemLike> workstations) {
         for (ItemLike workstation : workstations) {
             Item item = workstation.asItem();
             if (item instanceof BlockItem blockItem) {

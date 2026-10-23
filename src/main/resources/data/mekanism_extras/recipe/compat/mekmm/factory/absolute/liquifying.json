@@ -8,18 +8,10 @@
   "type": "mekanism:mek_data",
   "category": "misc",
   "key": {
-    "A": {
-      "tag": "mekanism_extras:alloys/radiance"
-    },
-    "C": {
-      "tag": "c:circuits/absolute"
-    },
-    "I": {
-      "tag": "c:gems/emerald"
-    },
-    "P": {
-      "item": "mekmm:ultimate_liquifying_factory"
-    }
+    "A": "#mekanism_extras:alloys/radiance",
+    "C": "#c:circuits/absolute",
+    "I": "#c:gems/emerald",
+    "P": "mekmm:ultimate_liquifying_factory"
   },
   "pattern": [
     "ACA",

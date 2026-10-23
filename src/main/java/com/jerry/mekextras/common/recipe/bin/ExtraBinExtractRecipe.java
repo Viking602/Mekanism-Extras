@@ -1,70 +1,74 @@
 package com.jerry.mekextras.common.recipe.bin;
 
+import com.google.common.primitives.Ints;
+import mekanism.api.AutomationType;
+import mekanism.api.resource.LargeResourceStack;
 import com.jerry.mekextras.common.attachments.containers.item.ExtraComponentBackedBinInventorySlot;
 import com.jerry.mekextras.common.item.block.ItemBlockExtraBin;
+import mekanism.common.lib.transaction.TransactionHelper;
 import com.jerry.mekextras.common.registries.ExtraRecipeSerializersInternal;
-
-import mekanism.api.Action;
-import mekanism.api.annotations.NothingNullByDefault;
-import mekanism.common.util.MekanismUtils;
-
-import net.minecraft.core.HolderLookup;
+import mekanism.common.util.ItemAccessUtils;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.transfer.access.ItemAccess;
+import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
 
-@NothingNullByDefault
 public class ExtraBinExtractRecipe extends ExtraBinRecipe {
 
-    public ExtraBinExtractRecipe(CraftingBookCategory category) {
-        super(category);
-    }
+    public static final ExtraBinExtractRecipe INSTANCE = new ExtraBinExtractRecipe();
 
     @Override
     public boolean matches(CraftingInput inv, Level world) {
-        ItemStack binStack = findBinStack(inv);
-        if (binStack.isEmpty()) {
-            // If we didn't find a singular bin our recipe can't possibly match
+        ItemResource binData = findBinData(inv);
+        if (binData.isEmpty()) {
+            //If we didn't find a singular bin our recipe can't possibly match
             return false;
         }
-        // Only match the recipe if we have items in the bin that we can extract from
-        return !convertToSlot(binStack).isEmpty();
+        //Only match the recipe if we have items in the bin that we can extract from
+        return !convertToSlot(ItemAccessUtils.sideEffectFreeAccess(binData)).isEmpty();
     }
 
     @Override
-    public ItemStack assemble(CraftingInput inv, HolderLookup.Provider provider) {
-        ItemStack binStack = findBinStack(inv);
-        if (binStack.isEmpty()) {
-            // If we didn't find a singular bin our recipe can't possibly match
+    public ItemStack assemble(CraftingInput inv) {
+        ItemResource binData = findBinData(inv);
+        if (binData.isEmpty()) {
+            //If we didn't find a singular bin our recipe can't possibly match
             return ItemStack.EMPTY;
         }
-        // Display that our output will be the bottom stack
-        return convertToSlot(binStack).getBottomStack();
+        //Display that our output will be the bottom stack
+        ExtraComponentBackedBinInventorySlot slot = convertToSlot(ItemAccessUtils.sideEffectFreeAccess(binData));
+        LargeResourceStack<ItemResource> stack = slot.asStack();
+        if (stack.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+        ItemResource stored = stack.resource();
+        int toExtract = Math.min(Ints.saturatedCast(stack.amount()), stored.getMaxStackSize());
+        return stored.toStack(toExtract);
     }
 
-    private ItemStack findBinStack(CraftingInput inv) {
-        ItemStack binStack = ItemStack.EMPTY;
-        // Note: We don't use inv#getItems as that may do unnecessary copies depending on impl
+    private ItemResource findBinData(CraftingInput inv) {
+        ItemResource binData = ItemResource.EMPTY;
+        //Note: We don't use inv#getItems as that may do unnecessary copies depending on impl
         for (int i = 0, slots = inv.size(); i < slots; ++i) {
             ItemStack stackInSlot = inv.getItem(i);
             if (!stackInSlot.isEmpty()) {
                 if (stackInSlot.getItem() instanceof ItemBlockExtraBin) {
-                    if (!binStack.isEmpty() || stackInSlot.getCount() > 1) {
-                        // If we already have a bin, or our first bin has a stack size greater than one then this is not
-                        // a bin recipe
-                        return ItemStack.EMPTY;
+                    if (!binData.isEmpty() || stackInSlot.count() > 1) {
+                        //If we already have a bin, or our first bin has a stack size greater than one then this is not a bin recipe
+                        return ItemResource.EMPTY;
                     }
-                    binStack = stackInSlot;
+                    binData = ItemResource.of(stackInSlot);
                 } else {
-                    // This recipe only allows extracting from bins, so it has to be only a bin
-                    return ItemStack.EMPTY;
+                    //This recipe only allows extracting from bins, so it has to be only a bin
+                    return ItemResource.EMPTY;
                 }
             }
         }
-        return binStack;
+        return binData;
     }
 
     @Override
@@ -74,13 +78,21 @@ public class ExtraBinExtractRecipe extends ExtraBinRecipe {
         for (int i = 0; i < slots; ++i) {
             ItemStack stackInSlot = inv.getItem(i);
             if (stackInSlot.getItem() instanceof ItemBlockExtraBin) {
-                ItemStack binStack = stackInSlot.copy();
-                ExtraComponentBackedBinInventorySlot slot = convertToSlot(binStack);
-                ItemStack bottomStack = slot.getBottomStack();
-                if (!bottomStack.isEmpty()) {
-                    // Only attempt to do anything if there are items to try and remove
-                    MekanismUtils.logMismatchedStackSize(slot.shrinkStack(bottomStack.getCount(), Action.EXECUTE), bottomStack.getCount());
-                    remaining.set(i, binStack);
+                ItemAccess binAccess = ItemAccess.forStack(stackInSlot.copy());
+                ExtraComponentBackedBinInventorySlot slot = convertToSlot(binAccess);
+                LargeResourceStack<ItemResource> stack = slot.asStack();
+                if (!stack.isEmpty()) {
+                    ItemResource stored = stack.resource();
+                    //Protect against any mods that might be doing transactional logic, such as if an auto crafter validates it has enough energy before calling this method
+                    try (Transaction transaction = TransactionHelper.openTransactionSafe()) {
+                        int toExtract = Math.min(Ints.saturatedCast(stack.amount()), stored.getMaxStackSize());
+                        //Only attempt to do anything if there are items to try and remove
+                        if (slot.extract(stored, toExtract, transaction, AutomationType.MANUAL) == toExtract) {
+                            //If we extracted everything we expected to be able to, update the remaining, and commit the transaction
+                            remaining.set(i, ItemAccessUtils.asStack(binAccess));
+                            transaction.commit();
+                        }
+                    }
                 }
                 break;
             }
@@ -89,12 +101,7 @@ public class ExtraBinExtractRecipe extends ExtraBinRecipe {
     }
 
     @Override
-    public boolean canCraftInDimensions(int width, int height) {
-        return width * height >= 1;
-    }
-
-    @Override
-    public RecipeSerializer<?> getSerializer() {
+    public RecipeSerializer<ExtraBinExtractRecipe> getSerializer() {
         return ExtraRecipeSerializersInternal.BIN_EXTRACT.get();
     }
 }

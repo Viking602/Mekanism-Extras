@@ -1,0 +1,13 @@
+{
+  "model": {
+    "type": "neoforge:fluid_container",
+    "cover_is_mask": false,
+    "flip_gas": true,
+    "fluid": "mekanism_extras:naquadah_hexafluoride",
+    "textures": {
+      "base": "minecraft:item/bucket",
+      "fluid": "neoforge:item/mask/bucket_fluid",
+      "particle": "minecraft:item/bucket"
+    }
+  }
+}

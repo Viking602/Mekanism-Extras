@@ -21,6 +21,6 @@ public class TileEntityExtraSawingFactory$ComputerHandler extends ComputerMethod
 
     public static Object getSecondaryOutput_1(TileEntityExtraSawingFactory subject,
                                               BaseComputerHelper helper) throws ComputerException {
-        return helper.convert(subject.getSecondaryOutput(helper.getInt(0)));
+        return helper.convert(subject.getSecondaryOutputSlot(helper.getInt(0)).asStack());
     }
 }

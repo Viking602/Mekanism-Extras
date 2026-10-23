@@ -26,9 +26,9 @@ public class MixinTileComponentEjector {
     private int tickDelay;
 
     @Inject(method = "outputItems", at = @At(value = "TAIL"))
-    public void mixinGetEnergyPerTick(Direction facing, ConfigInfo info, CallbackInfo ci) {
+    public void mixinGetEnergyPerTick(CallbackInfo ci) {
         if (tile.supportsUpgrade(ExtraUpgrade.CREATIVE)) {
-            if (tile.getComponent().isUpgradeInstalled(ExtraUpgrade.CREATIVE)) {
+            if ((tile.getUpgrades(ExtraUpgrade.CREATIVE) > 0)) {
                 tickDelay = 0;
             }
         }

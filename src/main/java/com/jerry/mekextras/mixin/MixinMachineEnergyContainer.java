@@ -30,7 +30,7 @@ public abstract class MixinMachineEnergyContainer<TILE extends TileEntityMekanis
     protected TILE tile;
 
     @Shadow
-    protected long currentEnergyPerTick;
+    protected int currentEnergyPerTick;
 
     @Shadow
     public abstract void setMaxEnergy(long maxEnergy);
@@ -45,23 +45,27 @@ public abstract class MixinMachineEnergyContainer<TILE extends TileEntityMekanis
     public abstract void updateEnergyPerTick();
 
     protected MixinMachineEnergyContainer(long maxEnergy, Predicate<@NotNull AutomationType> canExtract, Predicate<@NotNull AutomationType> canInsert, @Nullable IContentsListener listener) {
-        super(maxEnergy, canExtract, canInsert, listener);
+        super(maxEnergy, canExtract, canInsert, null, null, listener);
     }
 
     @Inject(method = "getEnergyPerTick", at = @At(value = "RETURN"), cancellable = true)
-    public void mixinGetEnergyPerTick(CallbackInfoReturnable<Long> cir) {
+    public void mixinGetEnergyPerTick(CallbackInfoReturnable<Integer> cir) {
         if (tile.supportsUpgrade(ExtraUpgrade.CREATIVE)) {
-            cir.setReturnValue(tile.getComponent().isUpgradeInstalled(ExtraUpgrade.CREATIVE) ? 0 : currentEnergyPerTick);
+            cir.setReturnValue((tile.getUpgrades(ExtraUpgrade.CREATIVE) > 0) ? 0 : currentEnergyPerTick);
         }
     }
 
     @Override
     public void mekanism_Extras$extraUpdateMaxEnergy() {
         if (tile.supportsUpgrade(Upgrade.ENERGY) || tile.supportsUpgrade(ExtraUpgrade.CREATIVE)) {
-            if (tile.getComponent().isUpgradeInstalled(ExtraUpgrade.CREATIVE)) {
+            if ((tile.getUpgrades(ExtraUpgrade.CREATIVE) > 0)) {
                 setMaxEnergy(Long.MAX_VALUE);
             } else {
-                setMaxEnergy(MekanismUtils.getMaxEnergy(tile, getBaseMaxEnergy()));
+                long capacity = MekanismUtils.getMaxEnergy(tile, getBaseMaxEnergy());
+                setMaxEnergy(capacity);
+                // Modern containers preserve overfilled storage when capacity drops.
+                // Creative energy must not remain after removing the creative upgrade.
+                if (getAmountAsLong() > capacity) setEnergy(capacity, null);
             }
         }
     }
@@ -70,11 +74,11 @@ public abstract class MixinMachineEnergyContainer<TILE extends TileEntityMekanis
     public void mekanism_Extras$extraRecalculateUpgrades(Upgrade upgrade) {
         if (upgrade == ExtraUpgrade.CREATIVE) {
             mekanism_Extras$extraUpdateMaxEnergy();
-            if (getMaxEnergy() == Long.MAX_VALUE) {
-                setEnergy(Long.MAX_VALUE);
+            if (getCapacityAsLong() == Long.MAX_VALUE) {
+                setEnergy(Long.MAX_VALUE, null);
             }
         } else if (upgrade == Upgrade.ENERGY) {
-            if (getMaxEnergy() != Long.MAX_VALUE) {
+            if (getCapacityAsLong() != Long.MAX_VALUE) {
                 updateMaxEnergy();
                 updateEnergyPerTick();
             }

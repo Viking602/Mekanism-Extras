@@ -1,79 +1,79 @@
 package com.jerry.mekextras.common.block.basic;
 
-import com.jerry.mekextras.common.tile.TileEntityExtraFluidTank;
-
 import mekanism.api.security.IBlockSecurityUtils;
-import mekanism.common.block.prefab.BlockTile;
+import mekanism.common.component.containers.type.ContainerType;
+import mekanism.common.block.prefab.BlockTile.BlockTileModel;
+import mekanism.common.capabilities.Capabilities;
 import mekanism.common.content.blocktype.Machine;
+import mekanism.common.lib.transaction.TransactionHelper;
 import mekanism.common.resource.BlockResourceInfo;
-import mekanism.common.util.FluidUtils;
+import com.jerry.mekextras.common.tile.TileEntityExtraFluidTank;
 import mekanism.common.util.WorldUtils;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
-import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
 
-import org.jetbrains.annotations.NotNull;
+public class BlockExtraFluidTank extends BlockTileModel<TileEntityExtraFluidTank, Machine<TileEntityExtraFluidTank>> {
 
-public class BlockExtraFluidTank extends BlockTile.BlockTileModel<TileEntityExtraFluidTank, Machine<TileEntityExtraFluidTank>> {
-
-    public BlockExtraFluidTank(Machine<TileEntityExtraFluidTank> type) {
-        super(type, properties -> properties.mapColor(BlockResourceInfo.STEEL.getMapColor()));
+    public BlockExtraFluidTank(Machine<TileEntityExtraFluidTank> type, BlockBehaviour.Properties properties) {
+        super(type, defaultProperties(properties).mapColor(BlockResourceInfo.STEEL.getMapColor()));
     }
 
     @Override
-    public int getLightEmission(@NotNull BlockState state, @NotNull BlockGetter world, @NotNull BlockPos pos) {
+    public int getLightEmission(BlockState state, BlockGetter world, BlockPos pos) {
         int ambientLight = super.getLightEmission(state, world, pos);
         if (ambientLight == 15) {
-            // If we are already at the max light value don't bother looking up the tile to see if it has a fluid that
-            // gives off light
+            //If we are already at the max light value don't bother looking up the tile to see if it has a fluid that gives off light
             return ambientLight;
         }
         TileEntityExtraFluidTank tile = WorldUtils.getTileEntity(TileEntityExtraFluidTank.class, world, pos);
-        if (tile != null) {
-            FluidStack fluid = tile.fluidTank.getFluid();
-            if (!fluid.isEmpty()) {
-                ambientLight = Math.max(ambientLight, fluid.getFluidType().getLightLevel(fluid));
-            }
+        if (tile != null && !tile.fluidTank.isEmpty()) {
+            ambientLight = Math.max(ambientLight, tile.fluidTank.resource().getFluidType().getLightLevel());
         }
         return ambientLight;
     }
 
-    @NotNull
     @Override
-    @Deprecated
-    public ItemInteractionResult useItemOn(@NotNull ItemStack stack, @NotNull BlockState state, @NotNull Level world, @NotNull BlockPos pos, @NotNull Player player,
-                                           @NotNull InteractionHand hand, @NotNull BlockHitResult hit) {
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level world, BlockPos pos, Player player,
+          InteractionHand hand, BlockHitResult hit) {
         if (stack.isEmpty()) {
-            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+            return InteractionResult.TRY_WITH_EMPTY_HAND;
         }
         TileEntityExtraFluidTank tile = WorldUtils.getTileEntity(TileEntityExtraFluidTank.class, world, pos, true);
         if (tile == null) {
-            return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
-        } else if (world.isClientSide) {
+            return InteractionResult.FAIL;
+        } else if (world.isClientSide()) {
             return genericClientActivated(stack, tile);
         }
-        ItemInteractionResult wrenchResult = tile.tryWrench(state, player, stack).getInteractionResult();
-        if (wrenchResult.result() != InteractionResult.PASS) {
+        InteractionResult wrenchResult = tile.tryWrench(world, state, player, stack).getInteractionResult();
+        if (wrenchResult != InteractionResult.PASS) {
             return wrenchResult;
         }
-        // Handle filling fluid tank
+        //Handle filling fluid tank
         if (!player.isShiftKeyDown()) {
             if (!IBlockSecurityUtils.INSTANCE.canAccessOrDisplayError(player, world, pos, tile)) {
-                return ItemInteractionResult.FAIL;
-            } else if (FluidUtils.handleTankInteraction(player, hand, stack, tile.fluidTank)) {
-                player.getInventory().setChanged();
-                return ItemInteractionResult.SUCCESS;
+                return InteractionResult.FAIL;
+            }
+            ResourceHandler<FluidResource> tankHandler = Capabilities.FLUID.getCapabilityIfLoaded(world, pos, null, tile, hit.getDirection());
+            if (tankHandler != null) {
+                try (Transaction transaction = TransactionHelper.openTransactionSafe()) {
+                    if (ContainerType.FLUID.interactWithHandler(player, hand, pos, tankHandler, transaction)) {
+                        transaction.commit();
+                        return InteractionResult.SUCCESS;
+                    }
+                }
             }
         }
-        return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        return InteractionResult.TRY_WITH_EMPTY_HAND;
     }
 }

@@ -1,78 +1,21 @@
+import groovy.json.JsonSlurper
+def project02Artifacts = new JsonSlurper().parse(file('gradle/project02-dependencies.json'))
+def localFiles = project02Artifacts.collect { file("gradle/project02-dependencies/${it.file}") }
 dependencies {
+    implementation files(localFiles)
     compileOnly(libs.jetbrains.annotations)
-
-    clientLocalRuntime(forge.jecharacters.get())
-
-    // Recipe Viewers
-    compileOnly(forge.bundles.jei)
-    compileOnly(forge.emi)
-//    modCompileOnly(forge.jer)
-
-    // Mekanism
-    compileOnly(forge.mekanism)
-    compileOnly(variantOf(forge.mekanism) { classifier("additions") })
-    compileOnly(variantOf(forge.mekanism) { classifier("generators") })
-    compileOnly(variantOf(forge.mekanism) { classifier("tools") })
-
-    compileOnly(forge.mekanismcovers)
-    compileOnly(forge.evolvedmekanism)
-
-    compileOnly(forge.mekmm)
-
-    compileOnly(forge.ae2)
-    compileOnly(forge.guideme)
-    // Crt
-    compileOnly(forge.crt)
-
-    // mysticalAgriculture
-    compileOnly(forge.mysticalagriculture)
-
-    // CC: Tweaked
-    compileOnly(forge.cc.tweaked.core.api)
-    compileOnly(forge.cc.tweaked.forge.api)
-
-    // WAILA-likes
-    compileOnly(forge.jade)
-
-    // Standard runtime mods //
-    localRuntime(forge.jade)
-    localRuntime(forge.modernfix)
-    localRuntime(forge.ferritecore)
-
-    // Mekanism
-    localRuntime(forge.mekanism)
-    localRuntime(variantOf(forge.mekanism) { classifier("additions") })
-    localRuntime(variantOf(forge.mekanism) { classifier("generators") })
-    localRuntime(variantOf(forge.mekanism) { classifier("tools") })
-
-    localRuntime(forge.mekanismcovers)
-    localRuntime(forge.igleelibrary)
-    localRuntime(forge.evolvedmekanism)
-
-    localRuntime(forge.mekmm)
-
-
-    localRuntime(forge.guideme)
-    localRuntime(forge.ae2)
-
-    // Crt
-    localRuntime(forge.crt)
-
-    // mysticalAgriculture
-    localRuntime(forge.cucumber)
-    localRuntime(forge.mysticalagriculture)
-
-    // Runtime Recipe Viewers - uncomment whichever one you want to use //
-//    modLocalRuntime(forge.jer)
-//    modLocalRuntime(forge.emi)
-    localRuntime(forge.jei.neoforge.impl)
-
-    // Client-only runtime mods //
-    clientLocalRuntime(forge.sodium)
-    clientLocalRuntime(forge.iris)
-    clientLocalRuntime(forge.modernui)
-
-    //////////////////////////////////////////////////////
-    // Runtime mods for dev testing with unclean client //
-    //////////////////////////////////////////////////////
 }
+tasks.register('verifyProject02Dependencies') {
+    inputs.files(localFiles)
+    doLast {
+        project02Artifacts.each { artifact ->
+            def actual = java.security.MessageDigest.getInstance('SHA-256').digest(file("gradle/project02-dependencies/${artifact.file}").bytes).encodeHex().toString()
+            if (actual != artifact.sha256) throw new GradleException("Dependency checksum mismatch: ${artifact.file}")
+        }
+    }
+}
+tasks.withType(JavaCompile).configureEach { dependsOn('verifyProject02Dependencies') }
+// These optional integrations have no target-version API. Their source is retained.
+sourceSets.main.java.exclude('com/jerry/mekextras/client/recipe_viewer/emi/**',
+    'com/jerry/mekextras/mixin/client/recipe_viewer/emi/**',
+    'com/jerry/mekextras/common/tile/factory/TileEntityExtraAlloyingFactory.java')

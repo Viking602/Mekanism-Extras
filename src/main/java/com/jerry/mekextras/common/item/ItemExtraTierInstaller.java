@@ -90,7 +90,7 @@ public class ItemExtraTierInstaller extends Item {
         } else if (world.isClientSide()) {
             return InteractionResult.PASS;
         }
-        Holder<Block> block = state.getBlockHolder();
+        Holder<Block> block = state.typeHolder();
         ExtraAttributeUpgradeable upgradeableBlock = Attribute.get(block, ExtraAttributeUpgradeable.class);
         if (upgradeableBlock != null) {
             AdvancedTier advancedTier = ExtraAttribute.getAdvancedTier(block);
@@ -107,7 +107,7 @@ public class ItemExtraTierInstaller extends Item {
                     IUpgradeData upgradeData = tierUpgradable.getUpgradeData(world.registryAccess());
                     if (upgradeData == null) {
                         if (tierUpgradable.canBeUpgraded()) {
-                            MekanismExtras.LOGGER.warn("Got no upgrade data for block {} at position: {} in {} but it said it would be able to provide some.", block, pos, world.dimension().location());
+                            MekanismExtras.LOGGER.warn("Got no upgrade data for block {} at position: {} in {} but it said it would be able to provide some.", block, pos, world.dimension().identifier());
                             return InteractionResult.FAIL;
                         }
                     } else {
@@ -136,7 +136,7 @@ public class ItemExtraTierInstaller extends Item {
                         // Update the block
                         if (!world.setBlockAndUpdate(pos, upgradeState)) {
                             // Something went wrong, bail rather than trying to
-                            MekanismExtras.LOGGER.warn("Error upgrading block at position: {} in {}.", pos, world.dimension().location());
+                            MekanismExtras.LOGGER.warn("Error upgrading block at position: {} in {}.", pos, world.dimension().identifier());
                             return InteractionResult.FAIL;
                         }
                         // Place any bounding blocks the new state may have
@@ -145,14 +145,17 @@ public class ItemExtraTierInstaller extends Item {
                         }
                         TileEntityMekanism upgradedTile = WorldUtils.getTileEntity(TileEntityMekanism.class, world, pos);
                         if (upgradedTile == null) {
-                            MekanismExtras.LOGGER.warn("Error upgrading block at position: {} in {}. Expected a mekanism block as the result.", pos, world.dimension().location());
+                            MekanismExtras.LOGGER.warn("Error upgrading block at position: {} in {}. Expected a mekanism block as the result.", pos, world.dimension().identifier());
                             return InteractionResult.FAIL;
                         }
                         // TODO: Make it so it doesn't have to be a TileEntityMekanism in order to do these things?
                         if (tile instanceof ITileDirectional directional && directional.isDirectional()) {
                             upgradedTile.setFacing(directional.getDirection(), false);
                         }
-                        upgradedTile.parseUpgradeData(world.registryAccess(), upgradeData);
+                        try (net.neoforged.neoforge.transfer.transaction.Transaction transaction = mekanism.common.lib.transaction.TransactionHelper.openTransactionSafe()) {
+                            upgradedTile.parseUpgradeData(upgradeData, world.registryAccess(), transaction);
+                            transaction.commit();
+                        }
                         upgradedTile.resyncMasterToBounding();
                         upgradedTile.sendUpdatePacket();
                         upgradedTile.setChanged();

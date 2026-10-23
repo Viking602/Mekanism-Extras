@@ -4,6 +4,9 @@ import com.jerry.mekextras.common.registries.ExtraBlocks;
 import com.jerry.mekextras.common.tile.transmitter.TileEntityExtraTransmitter;
 import com.jerry.mekextras.common.util.IExtraUpgradeableTransmitter;
 
+import mekanism.common.lib.transaction.TransactionHelper;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import mekanism.api.IAlloyInteraction;
 import mekanism.api.tier.BaseTier;
 import mekanism.common.Mekanism;
@@ -53,10 +56,10 @@ public class ItemAlloyRadiance extends Item {
             IAlloyInteraction alloyInteraction = WorldUtils.getCapability(world, Capabilities.ALLOY_INTERACTION, pos, context.getClickedFace());
 
             if (alloyInteraction != null && world.getBlockEntity(pos) instanceof TileEntityTransmitter) {
-                if (!world.isClientSide) {
+                if (!world.isClientSide()) {
                     onExtraAlloyInteraction(player, context.getItemInHand(), world, pos, (TileEntityTransmitter) world.getBlockEntity(pos));
                 }
-                return InteractionResult.sidedSuccess(world.isClientSide);
+                return InteractionResult.SUCCESS;
             }
         }
         return InteractionResult.PASS;
@@ -79,6 +82,7 @@ public class ItemAlloyRadiance extends Item {
                     TileEntityTransmitter transmitterTile = transmitter.getTransmitterTile();
                     BlockState state = transmitterTile.getBlockState();
                     Holder<Block> target = getiBlockProvider(transmitterTile);
+                    if (target == null) continue;
                     BlockState upgradeState = BlockStateHelper.copyStateData(state, target);
                     if (state == upgradeState) {
                         // Skip if it would not actually upgrade anything
@@ -88,7 +92,10 @@ public class ItemAlloyRadiance extends Item {
                         if (transmitterNetwork instanceof DynamicBufferedNetwork dynamicNetwork) {
                             // Ensure we save the shares to the tiles so that they can properly take them, and they
                             // don't get voided
-                            dynamicNetwork.validateSaveShares((BufferedTransmitter<?, ?, ?, ?>) transmitter);
+                            try (Transaction transaction = TransactionHelper.openTransactionSafe()) {
+                                dynamicNetwork.validateSaveShares((BufferedTransmitter<?, ?, ?, ?>) transmitter, transaction);
+                                transaction.commit();
+                            }
                         }
                         sharesSet = true;
                     }
@@ -145,7 +152,10 @@ public class ItemAlloyRadiance extends Item {
 
     private <DATA extends TransmitterUpgradeData> void transferUpgradeData(IExtraUpgradeableTransmitter<DATA> upgradeableTransmitter, TransmitterUpgradeData data) {
         if (upgradeableTransmitter.dataTypeMatches(data)) {
-            upgradeableTransmitter.parseUpgradeData((DATA) data);
+            try (Transaction transaction = TransactionHelper.openTransactionSafe()) {
+                upgradeableTransmitter.parseUpgradeData((DATA) data, transaction);
+                transaction.commit();
+            }
         } else {
             Mekanism.logger.warn("Unhandled upgrade data.", new IllegalStateException());
         }

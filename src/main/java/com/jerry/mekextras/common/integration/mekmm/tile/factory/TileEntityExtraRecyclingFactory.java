@@ -1,7 +1,16 @@
 package com.jerry.mekextras.common.integration.mekmm.tile.factory;
+import com.jerry.mekextras.api.ExtraUpgrade;
+import com.jerry.mekextras.api.mixin.IMixinMachineEnergyContainer;
+import com.jerry.mekextras.common.block.attribute.ExtraAttribute;
+import com.jerry.mekextras.common.util.ExtraUpgradeUtils;
 
+import com.jerry.mekmm.api.recipes.RecyclerRecipe;
+import com.jerry.mekmm.api.recipes.RecyclerRecipe.ChanceOutput;
+import com.jerry.mekmm.api.recipes.cache.MoreMachineOneInputCachedRecipe;
+import com.jerry.mekmm.api.recipes.outputs.MoreMachineOutputHelper;
+import com.jerry.mekmm.client.recipe_viewer.MMRecipeViewerRecipeType;
 import com.jerry.mekextras.common.integration.mekmm.inventory.slot.ExtraMoreMachineFactoryInputInventorySlot;
-import com.jerry.mekextras.common.integration.mekmm.inventory.slot.ExtraMoreMachineFactoryOutputInventorySlot;
+import com.jerry.mekmm.common.recipe.MoreMachineRecipeType;
 
 import mekanism.api.IContentsListener;
 import mekanism.api.inventory.IInventorySlot;
@@ -12,29 +21,28 @@ import mekanism.api.recipes.inputs.IInputHandler;
 import mekanism.api.recipes.inputs.InputHelper;
 import mekanism.api.recipes.outputs.IOutputHandler;
 import mekanism.client.recipe_viewer.type.IRecipeViewerRecipeType;
-import mekanism.common.capabilities.holder.slot.InventorySlotHelper;
+import mekanism.common.capabilities.holder.container.MekContainerHelper;
+import com.jerry.mekextras.common.integration.mekmm.inventory.slot.ExtraMoreMachineFactoryOutputInventorySlot;
 import mekanism.common.inventory.warning.WarningTracker.WarningType;
 import mekanism.common.recipe.IMekanismRecipeTypeProvider;
 import mekanism.common.recipe.lookup.ISingleRecipeLookupHandler.ItemRecipeLookupHandler;
 import mekanism.common.recipe.lookup.cache.InputRecipeCache.SingleItem;
 import mekanism.common.recipe.lookup.monitor.FactoryRecipeCacheLookupMonitor;
+import com.jerry.mekextras.common.tier.ExtraFactoryTier;
 import mekanism.common.upgrade.MachineUpgradeData;
 import mekanism.common.util.InventoryUtils;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.common.util.TriPredicate;
+import net.neoforged.neoforge.transfer.item.ItemResource;
 
-import com.jerry.mekmm.api.recipes.RecyclerRecipe;
-import com.jerry.mekmm.api.recipes.cache.MoreMachineOneInputCachedRecipe;
-import com.jerry.mekmm.api.recipes.outputs.MoreMachineOutputHelper;
-import com.jerry.mekmm.client.recipe_viewer.MoreMachineRecipeViewerRecipeType;
-import com.jerry.mekmm.common.recipe.MoreMachineRecipeType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -43,7 +51,7 @@ import java.util.Set;
 
 public class TileEntityExtraRecyclingFactory extends TileEntityExtraMoreMachineFactory<RecyclerRecipe> implements ItemRecipeLookupHandler<RecyclerRecipe> {
 
-    private static final TriPredicate<RecyclerRecipe, ItemStack, ItemStack> OUTPUT_CHECK = (recipe, input, output) -> InventoryUtils.areItemsStackable(recipe.getOutput(input).getMaxChanceOutput(), output);
+    private static final TriPredicate<RecyclerRecipe, ItemResource, ItemResource> OUTPUT_CHECK = (recipe, input, output) -> output.isEmpty() || InventoryUtils.areItemsStackable(recipe.getOutput(input.toStack()).getMaxChanceOutput(), output);
 
     private static final List<RecipeError> TRACKED_ERROR_TYPES = List.of(
             RecipeError.NOT_ENOUGH_ENERGY,
@@ -53,31 +61,34 @@ public class TileEntityExtraRecyclingFactory extends TileEntityExtraMoreMachineF
 
     private static final Set<RecipeError> GLOBAL_ERROR_TYPES = Set.of(RecipeError.NOT_ENOUGH_ENERGY);
 
-    protected IInputHandler<@NotNull ItemStack>[] inputHandlers;
-    protected IOutputHandler<RecyclerRecipe.ChanceOutput>[] outputHandlers;
+    protected IInputHandler<Item, @NotNull ItemStack>[] inputHandlers;
+    protected IOutputHandler<ChanceOutput>[] outputHandlers;
 
     public TileEntityExtraRecyclingFactory(Holder<Block> blockProvider, BlockPos pos, BlockState state) {
         super(blockProvider, pos, state, TRACKED_ERROR_TYPES, GLOBAL_ERROR_TYPES);
     }
 
     @Override
-    protected void addSlots(InventorySlotHelper builder, IContentsListener listener, IContentsListener updateSortingListener) {
+    protected void addSlots(MekContainerHelper<IInventorySlot> builder, IContentsListener listener, IContentsListener updateSortingListener) {
         inputHandlers = new IInputHandler[tier.processes];
         outputHandlers = new IOutputHandler[tier.processes];
         processInfoSlots = new ProcessInfo[tier.processes];
+        int baseX = 27;
+        int baseXMult = 19;
         for (int i = 0; i < tier.processes; i++) {
+            int xPos = baseX + (i * baseXMult);
             FactoryRecipeCacheLookupMonitor<RecyclerRecipe> lookupMonitor = recipeCacheLookupMonitors[i];
             IContentsListener updateSortingAndUnpause = () -> {
                 updateSortingListener.onContentsChanged();
                 lookupMonitor.unpause();
             };
-            ExtraMoreMachineFactoryOutputInventorySlot outputSlot = ExtraMoreMachineFactoryOutputInventorySlot.at(this, updateSortingAndUnpause, getXPos(i), 57);
+            ExtraMoreMachineFactoryOutputInventorySlot outputSlot = ExtraMoreMachineFactoryOutputInventorySlot.at(this, updateSortingAndUnpause, xPos, 57);
             // Note: As we are an item factory that has comparator's based on items we can just use the monitor as a
             // listener directly
-            ExtraMoreMachineFactoryInputInventorySlot inputSlot = ExtraMoreMachineFactoryInputInventorySlot.create(this, i, outputSlot, lookupMonitor, getXPos(i), 13);
+            ExtraMoreMachineFactoryInputInventorySlot inputSlot = ExtraMoreMachineFactoryInputInventorySlot.create(this, i, outputSlot, lookupMonitor, xPos, 13);
             int index = i;
-            builder.addSlot(inputSlot).tracksWarnings(slot -> slot.warning(WarningType.NO_MATCHING_RECIPE, getWarningCheck(RecipeError.NOT_ENOUGH_INPUT, index)));
-            builder.addSlot(outputSlot).tracksWarnings(slot -> slot.warning(WarningType.NO_SPACE_IN_OUTPUT, getWarningCheck(RecipeError.NOT_ENOUGH_OUTPUT_SPACE, index)));
+            builder.addContainer(inputSlot).tracksWarnings(slot -> slot.warning(WarningType.NO_MATCHING_RECIPE, getWarningCheck(RecipeError.NOT_ENOUGH_INPUT, index)));
+            builder.addContainer(outputSlot).tracksWarnings(slot -> slot.warning(WarningType.NO_SPACE_IN_OUTPUT, getWarningCheck(RecipeError.NOT_ENOUGH_OUTPUT_SPACE, index)));
 
             inputHandlers[i] = InputHelper.getInputHandler(inputSlot, RecipeError.NOT_ENOUGH_INPUT);
             outputHandlers[i] = MoreMachineOutputHelper.getOutputHandler(outputSlot, RecipeError.NOT_ENOUGH_OUTPUT_SPACE);
@@ -86,27 +97,27 @@ public class TileEntityExtraRecyclingFactory extends TileEntityExtraMoreMachineF
     }
 
     @Override
-    protected boolean isCachedRecipeValid(@Nullable CachedRecipe<RecyclerRecipe> cached, @NotNull ItemStack stack) {
+    protected boolean isCachedRecipeValid(@Nullable CachedRecipe<RecyclerRecipe> cached, @NotNull ItemResource stack) {
         return cached != null && cached.getRecipe().getInput().testType(stack);
     }
 
     @Override
-    protected @Nullable RecyclerRecipe findRecipe(int process, @NotNull ItemStack fallbackInput, @NotNull IInventorySlot chanceOutputSlot, @Nullable IInventorySlot outputSlot) {
-        return getRecipeType().getInputCache().findTypeBasedRecipe(level, fallbackInput, chanceOutputSlot.getStack(), OUTPUT_CHECK);
+    protected @Nullable RecyclerRecipe findRecipe(int process, @NotNull ItemResource fallbackInput, @NotNull IInventorySlot chanceOutputSlot, @Nullable IInventorySlot outputSlot) {
+        return getRecipeType().getInputCache().findTypeBasedRecipe(level, fallbackInput, chanceOutputSlot.resource(), OUTPUT_CHECK);
     }
 
     @Override
-    protected int getNeededInput(RecyclerRecipe recipe, ItemStack inputStack) {
+    protected int getNeededInput(RecyclerRecipe recipe, ItemResource inputStack) {
         return MathUtils.clampToInt(recipe.getInput().getNeededAmount(inputStack));
     }
 
     @Override
-    public boolean isItemValidForSlot(@NotNull ItemStack stack) {
+    public boolean isItemValidForSlot(@NotNull ItemResource stack) {
         return true;
     }
 
     @Override
-    public boolean isValidInputItem(@NotNull ItemStack stack) {
+    public boolean isValidInputItem(@NotNull ItemResource stack) {
         return containsRecipe(stack);
     }
 
@@ -117,7 +128,7 @@ public class TileEntityExtraRecyclingFactory extends TileEntityExtraMoreMachineF
 
     @Override
     public IRecipeViewerRecipeType<RecyclerRecipe> recipeViewerType() {
-        return MoreMachineRecipeViewerRecipeType.RECYCLER;
+        return MMRecipeViewerRecipeType.RECYCLER;
     }
 
     @Override
@@ -135,12 +146,12 @@ public class TileEntityExtraRecyclingFactory extends TileEntityExtraMoreMachineF
                 .setRequiredTicks(this::getTicksRequired)
                 .setOnFinish(this::markForSave)
                 .setOperatingTicksChanged(operatingTicks -> progress[cacheIndex] = operatingTicks)
-                .setBaselineMaxOperations(this::getOperationsPerTick);
+                .setBaselineMaxOperations(() -> upgradeMaxOperations);
     }
 
     @NotNull
     @Override
     public MachineUpgradeData getUpgradeData(HolderLookup.Provider provider) {
-        return new MachineUpgradeData(provider, redstone, getControlType(), getEnergyContainer(), progress, energySlot, inputSlots, outputSlots, isSorting(), getComponents());
+        return new MachineUpgradeData(provider, redstone, getControlType(), energyContainer, progress, energySlot, inputSlots, outputSlots, isSorting(), getComponents(), problemPath());
     }
 }

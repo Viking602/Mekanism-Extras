@@ -57,14 +57,14 @@ public class MixinUpgrade {
         throw new AssertionError();
     }
 
-    @Inject(method = "<clinit>", at = @At("TAIL"))
+    @Inject(method = "<clinit>", at = @At(value = "FIELD", target = "Lmekanism/api/Upgrade;$VALUES:[Lmekanism/api/Upgrade;", opcode = org.objectweb.asm.Opcodes.PUTSTATIC, shift = At.Shift.AFTER))
     private static void upgradeClinit(CallbackInfo ci) {
         ExtraUpgrade.STACK = mekanismExtras$addVariant("STACK", APIExtraLang.UPGRADE_STACK, APIExtraLang.UPGRADE_STACK_DESCRIPTION, 8, EnumColor.BRIGHT_PINK);
         ExtraUpgrade.IONIC_MEMBRANE = mekanismExtras$addVariant("IONIC_MEMBRANE", APIExtraLang.UPGRADE_IONIC_MEMBRANE, APIExtraLang.UPGRADE_IONIC_MEMBRANE_DESCRIPTION, 1, EnumColor.WHITE);
         ExtraUpgrade.CREATIVE = mekanismExtras$addVariant("CREATIVE", APIExtraLang.UPGRADE_CREATIVE, APIExtraLang.UPGRADE_CREATIVE_DESCRIPTION, 1, EnumColor.PURPLE);
 
         // 重新初始化静态参数，这非常重要
-        mekanismExtras$reinitializeByIdMap();
+
     }
 
     @Unique
@@ -85,7 +85,7 @@ public class MixinUpgrade {
     @Unique
     private static void mekanismExtras$reinitializeByIdMap() {
         Upgrade[] values = $VALUES;
-        Function<String, Upgrade> nameLookup = StringRepresentable.createNameLookup(values, Function.identity());
+        Function<String, Upgrade> nameLookup = StringRepresentable.createNameLookup(values);
         Function<String, Upgrade> remapper = it -> "gas".equals(it) ? CHEMICAL : nameLookup.apply(it);
         CODEC = new StringRepresentable.EnumCodec<>(values, remapper);
         BY_ID = ByIdMap.continuous(Upgrade::ordinal, values, ByIdMap.OutOfBoundsStrategy.WRAP);

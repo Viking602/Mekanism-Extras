@@ -1,57 +1,56 @@
 package com.jerry.mekextras.common.attachments.containers.fluid;
+import mekanism.common.component.containers.fluid.*;
 
+import mekanism.api.AutomationType;
+import mekanism.api.functions.ConstantPredicates;
+import mekanism.common.component.containers.resource.AttachedResources;
 import com.jerry.mekextras.common.item.block.machine.ItemBlockExtraFluidTank;
 import com.jerry.mekextras.common.tier.FTTier;
+import net.neoforged.neoforge.transfer.access.ItemAccess;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
+import org.jetbrains.annotations.Range;
 
-import mekanism.api.Action;
-import mekanism.api.AutomationType;
-import mekanism.api.annotations.NothingNullByDefault;
-import mekanism.api.functions.ConstantPredicates;
-import mekanism.common.attachments.containers.ContainerType;
-import mekanism.common.attachments.containers.fluid.AttachedFluids;
-import mekanism.common.attachments.containers.fluid.ComponentBackedFluidTank;
-
-import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.fluids.FluidStack;
-
-import org.jetbrains.annotations.NotNull;
-
-@NothingNullByDefault
 public class ExtraComponentBackedFluidTankFluidTank extends ComponentBackedFluidTank {
 
     private final boolean isCreative;
 
-    public static ExtraComponentBackedFluidTankFluidTank create(ContainerType<?, ?, ?> ignored, ItemStack attachedTo, int tankIndex) {
-        if (!(attachedTo.getItem() instanceof ItemBlockExtraFluidTank item)) {
+    public static ExtraComponentBackedFluidTankFluidTank create(ItemAccess attachedAccess, int tankIndex) {
+        if (!(attachedAccess.getResource().getItem() instanceof ItemBlockExtraFluidTank item)) {
             throw new IllegalStateException("Attached to should always be a fluid tank item");
         }
-        return new ExtraComponentBackedFluidTankFluidTank(attachedTo, tankIndex, item.getAdvancedTier());
+        return new ExtraComponentBackedFluidTankFluidTank(attachedAccess, tankIndex, item.getAdvancedTier());
     }
 
-    private ExtraComponentBackedFluidTankFluidTank(ItemStack attachedTo, int tankIndex, FTTier tier) {
-        super(attachedTo, tankIndex, ConstantPredicates.alwaysTrueBi(), ConstantPredicates.alwaysTrueBi(), ConstantPredicates.alwaysTrue(), tier::getOutput, tier::getStorage);
+    private ExtraComponentBackedFluidTankFluidTank(ItemAccess attachedAccess, int tankIndex, FTTier tier) {
+        super(attachedAccess, tankIndex, ConstantPredicates.alwaysTrueBi(), ConstantPredicates.alwaysTrueBi(), ConstantPredicates.alwaysTrue(), tier::getCapacity, tier::getTransferRate);
         isCreative = false;
     }
 
     @Override
-    public @NotNull FluidStack insert(@NotNull FluidStack stack, Action action, @NotNull AutomationType automationType) {
-        return super.insert(stack, action.combine(!isCreative), automationType);
+    @Range(from = 0, to = Integer.MAX_VALUE)
+    protected int insert(AttachedResources<FluidResource> attached, FluidResource currentType, @Range(from = 0, to = Long.MAX_VALUE) long currentAmount, long capacity,
+          FluidResource resource, @Range(from = 0, to = Integer.MAX_VALUE) int amount, TransactionContext transaction, AutomationType automationType) {
+        if (isCreative) {
+            //Return the result without actually changing the contents (accepting without providing any changes)
+            try (Transaction simulation = Transaction.open(transaction)) {
+                return super.insert(attached, currentType, currentAmount, capacity, resource, amount, simulation, automationType);
+            }
+        }
+        return super.insert(attached, currentType, currentAmount, capacity, resource, amount, transaction, automationType);
     }
 
     @Override
-    public @NotNull FluidStack extract(@NotNull AttachedFluids attachedFluids, @NotNull FluidStack stored, int amount, Action action, @NotNull AutomationType automationType) {
-        return super.extract(attachedFluids, stored, amount, action.combine(!isCreative), automationType);
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * Note: We are only patching {@link #setStackSize(AttachedFluids, FluidStack, int, Action)}, as both
-     * {@link #growStack(int, Action)} and
-     * {@link #shrinkStack(int, Action)} are wrapped through this method.
-     */
-    @Override
-    public int setStackSize(@NotNull AttachedFluids attachedFluids, @NotNull FluidStack stored, int amount, Action action) {
-        return super.setStackSize(attachedFluids, stored, amount, action.combine(!isCreative));
+    @Range(from = 0, to = Integer.MAX_VALUE)
+    protected int extract(AttachedResources<FluidResource> attached, FluidResource currentType, @Range(from = 0, to = Long.MAX_VALUE) long currentAmount,
+          FluidResource resource, @Range(from = 0, to = Integer.MAX_VALUE) int amount, TransactionContext transaction, AutomationType automationType) {
+        if (isCreative) {
+            try (Transaction simulation = Transaction.open(transaction)) {
+                //Use a sub transaction that is not committed to effectively just simulate what will happen without making any changes
+                return super.extract(attached, currentType, currentAmount, resource, amount, simulation, automationType);
+            }
+        }
+        return super.extract(attached, currentType, currentAmount, resource, amount, transaction, automationType);
     }
 }

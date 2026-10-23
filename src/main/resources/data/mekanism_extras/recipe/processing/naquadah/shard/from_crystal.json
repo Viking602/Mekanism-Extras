@@ -6,7 +6,7 @@
   },
   "item_input": {
     "count": 1,
-    "tag": "c:crystals/naquadah"
+    "ingredient": "#c:crystals/naquadah"
   },
   "output": {
     "count": 1,

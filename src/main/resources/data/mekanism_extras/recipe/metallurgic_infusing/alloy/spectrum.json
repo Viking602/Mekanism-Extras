@@ -6,7 +6,7 @@
   },
   "item_input": {
     "count": 1,
-    "tag": "mekanism_extras:alloys/shining"
+    "ingredient": "#mekanism_extras:alloys/shining"
   },
   "output": {
     "count": 1,

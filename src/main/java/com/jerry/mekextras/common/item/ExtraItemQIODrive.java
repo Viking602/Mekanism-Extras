@@ -1,55 +1,55 @@
 package com.jerry.mekextras.common.item;
 
-import com.jerry.mekextras.common.tier.ExtraQIODriveTier;
-
+import java.util.function.Consumer;
 import mekanism.api.text.EnumColor;
 import mekanism.api.text.TextComponentUtil;
 import mekanism.common.MekanismLang;
-import mekanism.common.attachments.qio.DriveMetadata;
+import mekanism.common.component.qio.DriveContents;
+import mekanism.common.component.qio.DriveMetadata;
 import mekanism.common.content.qio.IQIODriveItem;
 import mekanism.common.registries.MekanismDataComponents;
+import com.jerry.mekextras.common.tier.ExtraQIODriveTier;
 import mekanism.common.util.text.TextUtils;
-
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-
-import org.jetbrains.annotations.NotNull;
-
-import java.util.List;
+import net.minecraft.world.item.component.TooltipDisplay;
 
 public class ExtraItemQIODrive extends Item implements IQIODriveItem {
 
     private final ExtraQIODriveTier tier;
 
     public ExtraItemQIODrive(ExtraQIODriveTier tier, Properties properties) {
-        super(properties.stacksTo(1));
+        super(properties.stacksTo(1).component(MekanismDataComponents.DRIVE_METADATA, DriveMetadata.EMPTY)
+              .component(MekanismDataComponents.DRIVE_CONTENTS, DriveContents.EMPTY)
+        );
         this.tier = tier;
     }
 
     @Override
-    public void appendHoverText(@NotNull ItemStack stack, @NotNull TooltipContext context, @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
+    @Deprecated
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay, Consumer<Component> tooltipAdder, TooltipFlag flag) {
+        super.appendHoverText(stack, context, tooltipDisplay, tooltipAdder, flag);
         DriveMetadata meta = stack.getOrDefault(MekanismDataComponents.DRIVE_METADATA, DriveMetadata.EMPTY);
-        tooltip.add(MekanismLang.QIO_ITEMS_DETAIL.translateColored(EnumColor.GRAY, EnumColor.INDIGO,
-                TextUtils.format(meta.count()), TextUtils.format(getCountCapacity(stack))));
-        tooltip.add(MekanismLang.QIO_TYPES_DETAIL.translateColored(EnumColor.GRAY, EnumColor.INDIGO,
-                TextUtils.format(meta.types()), TextUtils.format(getTypeCapacity(stack))));
+        tooltipAdder.accept(MekanismLang.QIO_ITEMS_DETAIL.translateColored(EnumColor.GRAY, EnumColor.INDIGO,
+              TextUtils.format(meta.count()), TextUtils.format(getCountCapacity())));
+        tooltipAdder.accept(MekanismLang.QIO_TYPES_DETAIL.translateColored(EnumColor.GRAY, EnumColor.INDIGO,
+              TextUtils.format(meta.types()), TextUtils.format(getTypeCapacity())));
     }
 
-    @NotNull
     @Override
-    public Component getName(@NotNull ItemStack stack) {
+    public Component getName(ItemStack stack) {
         return TextComponentUtil.build(tier.getAdvanceTier().getColor(), super.getName(stack));
     }
 
     @Override
-    public long getCountCapacity(ItemStack stack) {
+    public long getCountCapacity() {
         return tier.getCount();
     }
 
     @Override
-    public int getTypeCapacity(ItemStack stack) {
+    public int getTypeCapacity() {
         return tier.getTypes();
     }
 }

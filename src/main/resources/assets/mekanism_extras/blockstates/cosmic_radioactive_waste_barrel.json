@@ -13,7 +13,7 @@
     },
     "facing=west": {
       "model": "mekanism_extras:block/radioactive_waste_barrel/cosmic",
-      "y": -90
+      "y": 270
     }
   }
 }

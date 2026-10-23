@@ -1,0 +1,38 @@
+[
+  {
+    "file": "Mekanism-26.1.2-10.8.0-viking602.1.homebaked-projecte.1.heat.1.energy.1.jar",
+    "sha256": "d7c42a03ec1892e3cd09ff0dc7b8bed3d09dfe42ca3f5adefb4c8b3508b52b66"
+  },
+  {
+    "file": "MekanismAdditions-26.1.2-10.8.0-project02.1.homebaked.jar",
+    "sha256": "c73eeb5e04c950599759d972273c62017b10e65e562a5dd2a43e155acdb42674"
+  },
+  {
+    "file": "MekanismGenerators-26.1.2-10.8.0-project02.1.homebaked.jar",
+    "sha256": "64be59d2f50005838cb5e6469156dc2b182f4c3155424a6755bde8d7ba9527da"
+  },
+  {
+    "file": "MekanismTools-26.1.2-10.8.0-project02.1.homebaked.jar",
+    "sha256": "04b1eba1ded7391bf3e231eeeff4f8eb57081d4da0787fdf7a4e4b3fff35988a"
+  },
+  {
+    "file": "mekmm-26.1.2-2.0.0-project02.4.jar",
+    "sha256": "339d946d803715c7e019b9dfffef82dbbcca518b5a1a3ebeae5bccfeb94064a3"
+  },
+  {
+    "file": "jei-26.1.2-neoforge-29.43.0.107.jar",
+    "sha256": "ce782d28d94d9eba792738833024f65c1b3c3b409c83de17e62a456bead2e07c"
+  },
+  {
+    "file": "Jade-mc26.1-NeoForge-26.1.11.jar",
+    "sha256": "9a6699ff334de836fe7fe003019842ba181271a8e13344587c6092ebca3f2dd1"
+  },
+  {
+    "file": "appliedenergistics2-26.1.13-beta.jar",
+    "sha256": "6474119c645a21f509da518845ab42bff84d496f80a86ce5e551d7a4745b4893"
+  },
+  {
+    "file": "guideme-26.1.15-beta.jar",
+    "sha256": "17acb84bff9320b237340b280415029ba950640895343fb2f9c35b7b4416e7d5"
+  }
+]

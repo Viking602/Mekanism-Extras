@@ -10,9 +10,9 @@ import com.jerry.mekextras.common.integration.mekmm.tile.factory.TileEntityExtra
 import com.jerry.mekextras.common.tier.ExtraFactoryTier;
 import com.jerry.mekextras.common.util.ExtraEnumUtils;
 
-import mekanism.common.attachments.containers.ContainerType;
-import mekanism.common.attachments.containers.chemical.ChemicalTanksBuilder;
-import mekanism.common.attachments.containers.item.ItemSlotsBuilder;
+import mekanism.common.component.containers.type.ContainerType;
+import mekanism.common.component.containers.chemical.ChemicalTanksBuilder;
+import mekanism.common.component.containers.item.ItemSlotsBuilder;
 import mekanism.common.recipe.MekanismRecipeType;
 import mekanism.common.recipe.lookup.cache.InputRecipeCache;
 import mekanism.common.registration.impl.BlockDeferredRegister;
@@ -22,6 +22,7 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
@@ -38,6 +39,7 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.function.Function;
 
 public class ExtraMoreMachineBlocks {
 
@@ -58,10 +60,10 @@ public class ExtraMoreMachineBlocks {
 
     private static <TILE extends TileEntityExtraMoreMachineFactory<?>> BlockRegistryObject<BlockExtraMoreMachineFactory<?>, ItemBlockExtraMoreMachineFactory> registerMoreMachineFactory(ExtraMoreMachineFactory<TILE> type) {
         ExtraFactoryTier tier = (ExtraFactoryTier) Objects.requireNonNull(type.get(ExtraAttributeTier.class)).tier();
-        BlockRegistryObject<BlockExtraMoreMachineFactory<?>, ItemBlockExtraMoreMachineFactory> factory = registerTieredBlock(tier, "_" + type.getMoreMachineFactoryType().getRegistryNameComponent() + "_factory", () -> new BlockExtraMoreMachineFactory<>(type), ItemBlockExtraMoreMachineFactory::new);
+        BlockRegistryObject<BlockExtraMoreMachineFactory<?>, ItemBlockExtraMoreMachineFactory> factory = registerTieredBlock(tier, "_" + type.getMoreMachineFactoryType().getRegistryNameComponent() + "_factory", properties -> new BlockExtraMoreMachineFactory<>(type, properties), ItemBlockExtraMoreMachineFactory::new);
         factory.forItemHolder(holder -> {
             int processes = tier.processes;
-            Predicate<ItemStack> recipeInputPredicate = switch (type.getMoreMachineFactoryType()) {
+            Predicate<net.neoforged.neoforge.transfer.item.ItemResource> recipeInputPredicate = switch (type.getMoreMachineFactoryType()) {
                 case RECYCLING -> s -> MoreMachineRecipeType.RECYCLING.getInputCache().containsInput(null, s);
                 case PLANTING_STATION -> s -> MoreMachineRecipeType.PLANTING_STATION.getInputCache().containsInputA(null, s);
                 case CNC_STAMPING -> s -> MoreMachineRecipeType.STAMPING.getInputCache().containsInputA(null, s);
@@ -111,8 +113,8 @@ public class ExtraMoreMachineBlocks {
     }
 
     private static <BLOCK extends Block, ITEM extends BlockItem> BlockRegistryObject<BLOCK, ITEM> registerTieredBlock(IAdvancedTier tier, String suffix,
-                                                                                                                      Supplier<? extends BLOCK> blockSupplier, BiFunction<BLOCK, Item.Properties, ITEM> itemCreator) {
-        return MM_BLOCKS.register(tier.getAdvanceTier().getLowerName() + suffix, blockSupplier, itemCreator);
+                                                                                                                      Function<BlockBehaviour.Properties, ? extends BLOCK> blockSupplier, BiFunction<BLOCK, Item.Properties, ITEM> itemCreator) {
+        return MM_BLOCKS.register(tier.getAdvanceTier().getLowerName() + suffix, properties -> blockSupplier.apply(properties.mapColor(tier.getAdvanceTier().getMapColor())), itemCreator);
     }
 
     /**

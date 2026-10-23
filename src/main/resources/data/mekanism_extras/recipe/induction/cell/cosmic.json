@@ -1,15 +1,9 @@
 {
   "type": "mekanism:mek_data",
   "key": {
-    "#": {
-      "item": "mekanism_extras:cosmic_energy_cube"
-    },
-    "E": {
-      "item": "mekanism:energy_tablet"
-    },
-    "P": {
-      "item": "mekanism_extras:supreme_induction_cell"
-    }
+    "#": "mekanism_extras:cosmic_energy_cube",
+    "E": "mekanism:energy_tablet",
+    "P": "mekanism_extras:supreme_induction_cell"
   },
   "pattern": [
     "EPE",

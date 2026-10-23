@@ -32,7 +32,7 @@ public class ItemBlockExtraLogisticalTransporter extends ItemBlockExtraTransport
     @NotNull
     @Override
     public TransporterTier getTier() {
-        return Objects.requireNonNull(Attribute.getTier(getBlock(), TransporterTier.class));
+        return Objects.requireNonNull(Attribute.getTierNN(getBlock(), TransporterTier.class));
     }
 
     public @NotNull Component getName(@NotNull ItemStack stack) {
@@ -40,13 +40,13 @@ public class ItemBlockExtraLogisticalTransporter extends ItemBlockExtraTransport
     }
 
     @Override
-    protected void addStats(@NotNull ItemStack stack, @NotNull TooltipContext context, @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
-        super.addStats(stack, context, tooltip, flag);
+    protected void addStats(@NotNull ItemStack stack, net.neoforged.neoforge.transfer.access.ItemAccess itemAccess, @NotNull TooltipContext context, net.minecraft.world.item.component.TooltipDisplay tooltipDisplay, java.util.function.Consumer<Component> tooltip, @NotNull TooltipFlag flag) {
+        super.addStats(stack, itemAccess, context, tooltipDisplay, tooltip, flag);
         TransporterTier tier = getTier();
         float tickRate = Math.max(context.tickRate(), TickRateManager.MIN_TICKRATE);
         float speed = TPTier.getSpeed(tier) / (5 * SharedConstants.TICKS_PER_SECOND / tickRate);
         float pull = TPTier.getPullAmount(tier) * tickRate / MekanismUtils.TICKS_PER_HALF_SECOND;
-        tooltip.add(MekanismLang.SPEED.translateColored(EnumColor.INDIGO, EnumColor.GRAY, speed));
-        tooltip.add(MekanismLang.PUMP_RATE.translateColored(EnumColor.INDIGO, EnumColor.GRAY, pull));
+        tooltip.accept(MekanismLang.SPEED.translateColored(EnumColor.INDIGO, EnumColor.GRAY, speed));
+        tooltip.accept(MekanismLang.PUMP_RATE.translateColored(EnumColor.INDIGO, EnumColor.GRAY, pull));
     }
 }

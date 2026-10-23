@@ -13,7 +13,7 @@ public interface IExtraUpgradeableTransmitter<DATA extends TransmitterUpgradeDat
 
     boolean dataTypeMatches(@NotNull TransmitterUpgradeData data);
 
-    void parseUpgradeData(@NotNull DATA data);
+    void parseUpgradeData(@NotNull DATA data, net.neoforged.neoforge.transfer.transaction.TransactionContext transaction);
 
     ITier getTier();
 

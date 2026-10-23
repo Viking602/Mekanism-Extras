@@ -2,11 +2,11 @@
   "type": "mekanism:combining",
   "extra_input": {
     "count": 1,
-    "tag": "c:end_stones"
+    "ingredient": "#c:end_stones"
   },
   "main_input": {
     "count": 12,
-    "tag": "c:raw_materials/naquadah"
+    "ingredient": "#c:raw_materials/naquadah"
   },
   "output": {
     "count": 1,

@@ -8,21 +8,11 @@
   "type": "mekanism:mek_data",
   "category": "misc",
   "key": {
-    "A": {
-      "tag": "mekanism_extras:alloys/spectrum"
-    },
-    "C": {
-      "tag": "c:circuits/infinite"
-    },
-    "I": {
-      "tag": "c:pellets/plutonium"
-    },
-    "J": {
-      "tag": "c:pellets/polonium"
-    },
-    "P": {
-      "item": "mekanism_extras:cosmic_painting_factory"
-    }
+    "A": "#mekanism_extras:alloys/spectrum",
+    "C": "#c:circuits/infinite",
+    "I": "#c:pellets/plutonium",
+    "J": "#c:pellets/polonium",
+    "P": "mekanism_extras:cosmic_painting_factory"
   },
   "pattern": [
     "ACA",

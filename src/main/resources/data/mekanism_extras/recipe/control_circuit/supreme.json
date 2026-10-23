@@ -1,12 +1,8 @@
 {
   "type": "minecraft:crafting_shaped",
   "key": {
-    "A": {
-      "tag": "mekanism_extras:alloys/thermonuclear"
-    },
-    "C": {
-      "tag": "c:circuits/absolute"
-    }
+    "A": "#mekanism_extras:alloys/thermonuclear",
+    "C": "#c:circuits/absolute"
   },
   "pattern": [
     "ACA"

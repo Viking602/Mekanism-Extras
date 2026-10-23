@@ -2,15 +2,9 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "#": {
-      "tag": "c:chests"
-    },
-    "A": {
-      "tag": "mekanism_extras:alloys/thermonuclear"
-    },
-    "G": {
-      "tag": "c:glass_blocks/cheap"
-    }
+    "#": "#c:chests",
+    "A": "#mekanism_extras:alloys/thermonuclear",
+    "G": "#c:glass_blocks/cheap"
   },
   "pattern": [
     " G ",

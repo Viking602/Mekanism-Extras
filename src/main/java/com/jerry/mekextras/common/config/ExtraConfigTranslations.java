@@ -7,7 +7,7 @@ import com.jerry.mekextras.common.tier.*;
 import mekanism.common.config.IConfigTranslation;
 import mekanism.common.config.TranslationPreset;
 
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

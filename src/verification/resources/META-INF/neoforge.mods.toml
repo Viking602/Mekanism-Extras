@@ -1,0 +1,13 @@
+modLoader="javafml"
+loaderVersion="[10,)"
+license="MIT"
+[[mods]]
+modId="mekanism_extras_verification"
+version="1.0"
+displayName="Mekanism Extras disposable verification"
+[[dependencies.mekanism_extras_verification]]
+modId="mekanism_extras"
+type="required"
+versionRange="*"
+ordering="AFTER"
+side="BOTH"

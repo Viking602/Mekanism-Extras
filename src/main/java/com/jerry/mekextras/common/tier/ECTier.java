@@ -3,7 +3,7 @@ package com.jerry.mekextras.common.tier;
 import com.jerry.mekextras.api.tier.AdvancedTier;
 import com.jerry.mekextras.api.tier.IAdvancedTier;
 
-import mekanism.api.annotations.NothingNullByDefault;
+import org.jspecify.annotations.NullMarked;
 import mekanism.common.config.value.CachedLongValue;
 
 import net.minecraft.util.StringRepresentable;
@@ -13,7 +13,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Locale;
 
-@NothingNullByDefault
+@NullMarked
 public enum ECTier implements IAdvancedTier, StringRepresentable {
 
     ABSOLUTE(AdvancedTier.ABSOLUTE, 1_024_000_000, 1_024_000),
@@ -45,6 +45,9 @@ public enum ECTier implements IAdvancedTier, StringRepresentable {
     public String getSerializedName() {
         return name().toLowerCase(Locale.ROOT);
     }
+
+    public long getCapacity() { return getMaxEnergy(); }
+    public int getTransferRate() { return com.google.common.primitives.Ints.saturatedCast(getOutput()); }
 
     public long getMaxEnergy() {
         return storageReference == null ? getAdvanceMaxEnergy() : storageReference.getOrDefault();

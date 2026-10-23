@@ -13,7 +13,7 @@
     },
     "facing=west,active=false": {
       "model": "mekanism_extras:block/factory/rolling_mill/infinite",
-      "y": -90
+      "y": 270
     },
     "facing=north,active=true": {
       "model": "mekanism_extras:block/factory/rolling_mill/active/infinite"
@@ -28,7 +28,7 @@
     },
     "facing=west,active=true": {
       "model": "mekanism_extras:block/factory/rolling_mill/active/infinite",
-      "y": -90
+      "y": 270
     }
   }
 }

@@ -31,7 +31,7 @@ public class ItemBlockExtraUniversalCable extends ItemBlockTooltip<BlockSmallTra
     @NotNull
     @Override
     public CableTier getTier() {
-        return Objects.requireNonNull(Attribute.getTier(getBlock(), CableTier.class));
+        return Objects.requireNonNull(Attribute.getTierNN(getBlock(), CableTier.class));
     }
 
     public @NotNull Component getName(@NotNull ItemStack stack) {
@@ -39,17 +39,16 @@ public class ItemBlockExtraUniversalCable extends ItemBlockTooltip<BlockSmallTra
     }
 
     @Override
-    protected void addDetails(@NotNull ItemStack stack, @NotNull TooltipContext context, @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
-        super.addDetails(stack, context, tooltip, flag);
-        tooltip.add(MekanismLang.CAPABLE_OF_TRANSFERRING.translateColored(EnumColor.DARK_GRAY));
-        tooltip.add(MekanismLang.GENERIC_TRANSFER.translateColored(EnumColor.PURPLE, MekanismLang.ENERGY_FORGE_SHORT, MekanismLang.FORGE));
-        tooltip.add(MekanismLang.GENERIC_TRANSFER.translateColored(EnumColor.PURPLE, MekanismLang.ENERGY_JOULES_PLURAL, MekanismLang.MEKANISM));
+    protected void addDetails(@NotNull ItemStack stack, net.neoforged.neoforge.transfer.access.ItemAccess itemAccess, @NotNull TooltipContext context, net.minecraft.world.item.component.TooltipDisplay tooltipDisplay, java.util.function.Consumer<Component> tooltip, @NotNull TooltipFlag flag) {
+        super.addDetails(stack, itemAccess, context, tooltipDisplay, tooltip, flag);
+        tooltip.accept(MekanismLang.CAPABLE_OF_TRANSFERRING.translateColored(EnumColor.DARK_GRAY));
+        tooltip.accept(MekanismLang.GENERIC_TRANSFER.translateColored(EnumColor.PURPLE, MekanismLang.ENERGY_FORGE_SHORT, MekanismLang.FORGE));
     }
 
     @Override
-    protected void addStats(@NotNull ItemStack stack, @NotNull TooltipContext context, @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
-        super.addStats(stack, context, tooltip, flag);
+    protected void addStats(@NotNull ItemStack stack, net.neoforged.neoforge.transfer.access.ItemAccess itemAccess, @NotNull TooltipContext context, net.minecraft.world.item.component.TooltipDisplay tooltipDisplay, java.util.function.Consumer<Component> tooltip, @NotNull TooltipFlag flag) {
+        super.addStats(stack, itemAccess, context, tooltipDisplay, tooltip, flag);
         CableTier tier = getTier();
-        tooltip.add(MekanismLang.CAPACITY_PER_TICK.translateColored(EnumColor.INDIGO, EnumColor.GRAY, EnergyDisplay.of(CTier.getCapacityAsLong(tier))));
+        tooltip.accept(MekanismLang.CAPACITY_PER_TICK.translateColored(EnumColor.INDIGO, EnumColor.GRAY, EnergyDisplay.of(CTier.getCapacityAsLong(tier))));
     }
 }

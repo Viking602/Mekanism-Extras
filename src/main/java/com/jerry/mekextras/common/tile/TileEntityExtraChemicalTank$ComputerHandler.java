@@ -45,22 +45,22 @@ public class TileEntityExtraChemicalTank$ComputerHandler extends ComputerMethodF
 
     public static Object getCurrentTank$getStored(TileEntityExtraChemicalTank subject,
                                                   BaseComputerHelper helper) throws ComputerException {
-        return helper.convert(SpecialComputerMethodWrapper.ComputerChemicalTankWrapper.getStack(subject.getCurrentTank()));
+        return helper.convert(SpecialComputerMethodWrapper.ComputerChemicalTankWrapper.getStack(subject.getChemicalTank()));
     }
 
     public static Object getCurrentTank$getCapacity(TileEntityExtraChemicalTank subject,
                                                     BaseComputerHelper helper) throws ComputerException {
-        return helper.convert(SpecialComputerMethodWrapper.ComputerChemicalTankWrapper.getCapacity(subject.getCurrentTank()));
+        return helper.convert(SpecialComputerMethodWrapper.ComputerChemicalTankWrapper.getCapacity(subject.getChemicalTank()));
     }
 
     public static Object getCurrentTank$getNeeded(TileEntityExtraChemicalTank subject,
                                                   BaseComputerHelper helper) throws ComputerException {
-        return helper.convert(SpecialComputerMethodWrapper.ComputerChemicalTankWrapper.getNeeded(subject.getCurrentTank()));
+        return helper.convert(SpecialComputerMethodWrapper.ComputerChemicalTankWrapper.getNeeded(subject.getChemicalTank()));
     }
 
     public static Object getCurrentTank$getFilledPercentage(TileEntityExtraChemicalTank subject,
                                                             BaseComputerHelper helper) throws ComputerException {
-        return helper.convert(SpecialComputerMethodWrapper.ComputerChemicalTankWrapper.getFilledPercentage(subject.getCurrentTank()));
+        return helper.convert(SpecialComputerMethodWrapper.ComputerChemicalTankWrapper.getFilledPercentage(subject.getChemicalTank()));
     }
 
     public static Object setDumpingMode_1(TileEntityExtraChemicalTank subject, BaseComputerHelper helper)

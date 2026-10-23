@@ -6,8 +6,8 @@ import com.jerry.genextras.common.GeneratorExtraTags;
 import com.jerry.genextras.common.config.GeneratorsExtraConfig;
 import com.jerry.genextras.common.item.ItemNaquadahHohlraum;
 
-import mekanism.common.attachments.containers.ContainerType;
-import mekanism.common.attachments.containers.chemical.ChemicalTanksBuilder;
+import mekanism.common.component.containers.type.ContainerType;
+import mekanism.common.component.containers.chemical.ChemicalTanksBuilder;
 import mekanism.common.registration.impl.ItemDeferredRegister;
 import mekanism.common.registration.impl.ItemRegistryObject;
 import mekanism.generators.common.config.MekanismGeneratorsConfig;
@@ -20,7 +20,7 @@ public class GenExtraItems {
 
     public static final ItemRegistryObject<ItemNaquadahHohlraum> NAQUADAH_HOHLRAUM = GEN_EXTRA_ITEMS.registerItem("naquadah_hohlraum", ItemNaquadahHohlraum::new)
             .addAttachedContainerCapabilities(ContainerType.CHEMICAL, () -> ChemicalTanksBuilder.builder()
-                    .addInternalStorage(GeneratorsExtraConfig.extraGenerators.hohlraumFillRate, GeneratorsExtraConfig.extraGenerators.hohlraumMaxGas,
+                    .addInternalStorage(() -> com.google.common.primitives.Ints.saturatedCast(GeneratorsExtraConfig.extraGenerators.hohlraumFillRate.get()), GeneratorsExtraConfig.extraGenerators.hohlraumMaxGas,
                             gas -> gas.is(GeneratorExtraTags.Chemicals.NAQUADAH_URANIUM_FUEL))
-                    .build(), MekanismGeneratorsConfig.generators);
+                    .build(), GeneratorsExtraConfig.extraGenerators);
 }

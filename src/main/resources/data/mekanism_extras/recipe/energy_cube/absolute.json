@@ -1,18 +1,10 @@
 {
   "type": "mekanism:mek_data",
   "key": {
-    "A": {
-      "tag": "mekanism_extras:alloys/radiance"
-    },
-    "E": {
-      "item": "mekanism:energy_tablet"
-    },
-    "I": {
-      "tag": "c:gems/emerald"
-    },
-    "P": {
-      "item": "mekanism:ultimate_energy_cube"
-    }
+    "A": "#mekanism_extras:alloys/radiance",
+    "E": "mekanism:energy_tablet",
+    "I": "#c:gems/emerald",
+    "P": "mekanism:ultimate_energy_cube"
   },
   "pattern": [
     "AEA",

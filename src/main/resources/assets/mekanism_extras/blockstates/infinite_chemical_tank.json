@@ -13,7 +13,7 @@
     },
     "facing=west": {
       "model": "mekanism_extras:block/chemical_tank/infinite",
-      "y": -90
+      "y": 270
     }
   }
 }

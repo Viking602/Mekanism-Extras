@@ -1,18 +1,10 @@
 {
   "type": "mekanism:mek_data",
   "key": {
-    "A": {
-      "tag": "mekanism_extras:alloys/thermonuclear"
-    },
-    "E": {
-      "item": "mekanism:energy_tablet"
-    },
-    "I": {
-      "tag": "c:ingots/netherite"
-    },
-    "P": {
-      "item": "mekanism_extras:absolute_energy_cube"
-    }
+    "A": "#mekanism_extras:alloys/thermonuclear",
+    "E": "mekanism:energy_tablet",
+    "I": "#c:ingots/netherite",
+    "P": "mekanism_extras:absolute_energy_cube"
   },
   "pattern": [
     "AEA",

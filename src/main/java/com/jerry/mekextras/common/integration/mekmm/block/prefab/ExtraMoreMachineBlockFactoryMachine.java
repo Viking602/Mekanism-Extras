@@ -13,21 +13,21 @@ import java.util.function.UnaryOperator;
 
 public class ExtraMoreMachineBlockFactoryMachine<TILE extends TileEntityMekanism, MACHINE extends ExtraFactoryMachine<TILE>> extends BlockTile<TILE, MACHINE> {
 
-    public ExtraMoreMachineBlockFactoryMachine(MACHINE machine, UnaryOperator<Properties> propertiesModifier) {
-        super(machine, propertiesModifier);
+    public ExtraMoreMachineBlockFactoryMachine(MACHINE machine, Properties properties) {
+        super(machine, properties);
     }
 
     public static class ExtraMoreMachineBlockFactoryMachineModel<TILE extends TileEntityMekanism, MACHINE extends ExtraFactoryMachine<TILE>> extends ExtraMoreMachineBlockFactoryMachine<TILE, MACHINE> implements IStateFluidLoggable {
 
-        public ExtraMoreMachineBlockFactoryMachineModel(MACHINE machineType, UnaryOperator<Properties> propertiesModifier) {
-            super(machineType, propertiesModifier);
+        public ExtraMoreMachineBlockFactoryMachineModel(MACHINE machineType, Properties properties) {
+            super(machineType, properties);
         }
     }
 
     public static class BlockExtraMoreMachineFactory<TILE extends TileEntityExtraMoreMachineFactory<?>> extends ExtraMoreMachineBlockFactoryMachineModel<TILE, ExtraMoreMachineFactory<TILE>> {
 
-        public BlockExtraMoreMachineFactory(ExtraMoreMachineFactory<TILE> factoryType) {
-            super(factoryType, properties -> properties.mapColor(BlockResourceInfo.STEEL.getMapColor()));
+        public BlockExtraMoreMachineFactory(ExtraMoreMachineFactory<TILE> factoryType, Properties properties) {
+            super(factoryType, defaultProperties(properties).mapColor(BlockResourceInfo.STEEL.getMapColor()));
         }
     }
 }

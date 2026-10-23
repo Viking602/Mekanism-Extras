@@ -2,9 +2,9 @@ package com.jerry.genextras.common.content.naquadah;
 
 import mekanism.api.SerializationConstants;
 import mekanism.common.lib.multiblock.MultiblockCache;
-
-import net.minecraft.core.HolderLookup;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 
 public class NaquadahReactorCache extends MultiblockCache<NaquadahReactorMultiblockData> {
 
@@ -14,10 +14,10 @@ public class NaquadahReactorCache extends MultiblockCache<NaquadahReactorMultibl
 
     private int getInjectionRate() {
         if (injectionRate == -1) {
-            // If it never got set default to 2
+            //If it never got set default to 2
             return 2;
         }
-        // Otherwise, return the actual so that it can be manually set down to zero
+        //Otherwise, return the actual so that it can be manually set down to zero
         return injectionRate;
     }
 
@@ -30,37 +30,38 @@ public class NaquadahReactorCache extends MultiblockCache<NaquadahReactorMultibl
     }
 
     @Override
-    public void apply(HolderLookup.Provider provider, NaquadahReactorMultiblockData data) {
-        super.apply(provider, data);
+    public void apply(NaquadahReactorMultiblockData data, TransactionContext transaction) {
+        super.apply(data, transaction);
         if (plasmaTemperature >= 0) {
-            data.plasmaTemperature = plasmaTemperature;
+            data.setPlasmaTemp(plasmaTemperature, transaction);
         }
-        data.setInjectionRate(getInjectionRate());
+        data.setInjectionRate(getInjectionRate(), transaction);
         data.setBurning(burning);
         data.updateTemperatures();
     }
 
     @Override
-    public void sync(NaquadahReactorMultiblockData data) {
-        super.sync(data);
-        plasmaTemperature = data.plasmaTemperature;
+    public void sync(NaquadahReactorMultiblockData data, TransactionContext transaction) {
+        super.sync(data, transaction);
+        plasmaTemperature = data.getPlasmaTemp();
         injectionRate = data.getInjectionRate();
         burning = data.isBurning();
     }
 
     @Override
-    public void load(HolderLookup.Provider provider, CompoundTag nbtTags) {
-        super.load(provider, nbtTags);
-        plasmaTemperature = nbtTags.getDouble(SerializationConstants.PLASMA_TEMP);
-        injectionRate = nbtTags.getInt(SerializationConstants.INJECTION_RATE);
-        burning = nbtTags.getBoolean(SerializationConstants.BURNING);
+    public void load(ValueInput input) {
+        super.load(input);
+        //TODO - 26.1: These used to just get instead of only getting if present, should the fallback be zero or the existing value?
+        plasmaTemperature = input.getDoubleOr(SerializationConstants.PLASMA_TEMP, plasmaTemperature);
+        injectionRate = input.getIntOr(SerializationConstants.INJECTION_RATE, injectionRate);
+        burning = input.getBooleanOr(SerializationConstants.BURNING, burning);
     }
 
     @Override
-    public void save(HolderLookup.Provider provider, CompoundTag nbtTags) {
-        super.save(provider, nbtTags);
-        nbtTags.putDouble(SerializationConstants.PLASMA_TEMP, plasmaTemperature);
-        nbtTags.putInt(SerializationConstants.INJECTION_RATE, getInjectionRate());
-        nbtTags.putBoolean(SerializationConstants.BURNING, burning);
+    public void save(ValueOutput output) {
+        super.save(output);
+        output.putDouble(SerializationConstants.PLASMA_TEMP, plasmaTemperature);
+        output.putInt(SerializationConstants.INJECTION_RATE, getInjectionRate());
+        output.putBoolean(SerializationConstants.BURNING, burning);
     }
 }

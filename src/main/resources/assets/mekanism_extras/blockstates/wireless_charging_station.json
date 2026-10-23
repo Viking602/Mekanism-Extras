@@ -9,7 +9,7 @@
     },
     "facing=west": {
       "model": "mekmm:block/wireless_charging_station",
-      "y": -90
+      "y": 270
     },
     "facing=east": {
       "model": "mekmm:block/wireless_charging_station",

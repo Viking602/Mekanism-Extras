@@ -12,7 +12,7 @@
   },
   "item_input": {
     "count": 1,
-    "item": "mekanismgenerators:laser_focus_matrix"
+    "ingredient": "mekanismgenerators:laser_focus_matrix"
   },
   "output": {
     "count": 1,

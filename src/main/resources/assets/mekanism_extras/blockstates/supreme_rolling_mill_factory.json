@@ -13,7 +13,7 @@
     },
     "facing=west,active=false": {
       "model": "mekanism_extras:block/factory/rolling_mill/supreme",
-      "y": -90
+      "y": 270
     },
     "facing=north,active=true": {
       "model": "mekanism_extras:block/factory/rolling_mill/active/supreme"
@@ -28,7 +28,7 @@
     },
     "facing=west,active=true": {
       "model": "mekanism_extras:block/factory/rolling_mill/active/supreme",
-      "y": -90
+      "y": 270
     }
   }
 }

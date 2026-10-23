@@ -1,3 +1,29 @@
 {
-  "parent": "mekanism_extras:block/transmitter/large/logistical_transporter/infinite"
+  "parent": "mekanism_extras:block/transmitter/large/logistical_transporter/infinite",
+  "visibility": {
+    "downNONE": true,
+    "downNORMAL": false,
+    "downPULL": false,
+    "downPUSH": false,
+    "upNONE": true,
+    "upNORMAL": false,
+    "upPULL": false,
+    "upPUSH": false,
+    "northNONE": true,
+    "northNORMAL": false,
+    "northPULL": false,
+    "northPUSH": false,
+    "southNONE": true,
+    "southNORMAL": false,
+    "southPULL": false,
+    "southPUSH": false,
+    "eastNONE": true,
+    "eastNORMAL": false,
+    "eastPULL": false,
+    "eastPUSH": false,
+    "westNONE": true,
+    "westNORMAL": false,
+    "westPULL": false,
+    "westPUSH": false
+  }
 }

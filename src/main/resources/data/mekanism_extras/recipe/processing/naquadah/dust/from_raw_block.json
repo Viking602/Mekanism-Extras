@@ -2,7 +2,7 @@
   "type": "mekanism:enriching",
   "input": {
     "count": 1,
-    "tag": "c:storage_blocks/raw_naquadah"
+    "ingredient": "#c:storage_blocks/raw_naquadah"
   },
   "output": {
     "count": 12,

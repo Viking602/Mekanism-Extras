@@ -2,7 +2,7 @@
   "type": "mekanism:oxidizing",
   "input": {
     "count": 1,
-    "tag": "mekanism_extras:enriched/osmium"
+    "ingredient": "#mekanism_extras:enriched/osmium"
   },
   "output": {
     "amount": 1600,

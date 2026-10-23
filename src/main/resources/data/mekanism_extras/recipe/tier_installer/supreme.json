@@ -1,18 +1,10 @@
 {
   "type": "minecraft:crafting_shaped",
   "key": {
-    "A": {
-      "tag": "mekanism_extras:alloys/thermonuclear"
-    },
-    "C": {
-      "tag": "c:circuits/supreme"
-    },
-    "I": {
-      "tag": "c:ingots/netherite"
-    },
-    "P": {
-      "tag": "minecraft:planks"
-    }
+    "A": "#mekanism_extras:alloys/thermonuclear",
+    "C": "#c:circuits/supreme",
+    "I": "#c:ingots/netherite",
+    "P": "#minecraft:planks"
   },
   "pattern": [
     "ACA",

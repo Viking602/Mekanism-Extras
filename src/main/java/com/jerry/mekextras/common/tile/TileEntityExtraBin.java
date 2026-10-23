@@ -1,85 +1,79 @@
 package com.jerry.mekextras.common.tile;
+import mekanism.common.tile.*;
 
-import com.jerry.mekextras.common.block.attribute.ExtraAttribute;
-import com.jerry.mekextras.common.inventory.slot.ExtraBinInventorySlot;
-import com.jerry.mekextras.common.tier.BTier;
-import com.jerry.mekextras.common.upgrade.ExtraBinUpgradeData;
-
-import mekanism.api.Action;
+import java.util.Objects;
 import mekanism.api.IConfigurable;
 import mekanism.api.IContentsListener;
 import mekanism.api.SerializationConstants;
-import mekanism.common.attachments.LockData;
+import mekanism.api.inventory.IInventorySlot;
+import mekanism.common.block.attribute.Attribute;
 import mekanism.common.capabilities.Capabilities;
-import mekanism.common.capabilities.holder.slot.IInventorySlotHolder;
-import mekanism.common.capabilities.holder.slot.InventorySlotHelper;
-import mekanism.common.content.network.transmitter.LogisticalTransporterBase;
+import mekanism.common.capabilities.holder.container.IContainerHolder;
+import mekanism.common.capabilities.holder.container.MekContainerHelper;
+import mekanism.common.component.LockData;
 import mekanism.common.integration.computer.ComputerException;
-import mekanism.common.integration.computer.SpecialComputerMethodWrapper;
+import mekanism.common.integration.computer.SpecialComputerMethodWrapper.ComputerIInventorySlotWrapper;
 import mekanism.common.integration.computer.annotation.ComputerMethod;
 import mekanism.common.integration.computer.annotation.WrappingComputerMethod;
-import mekanism.common.inventory.slot.BinInventorySlot;
+import com.jerry.mekextras.common.inventory.slot.ExtraBinInventorySlot;
 import mekanism.common.lib.inventory.HandlerTransitRequest;
-import mekanism.common.lib.inventory.TransitRequest;
+import mekanism.common.lib.inventory.TransitRequest.TransitResponse;
 import mekanism.common.registries.MekanismDataComponents;
-import mekanism.common.tile.base.CapabilityTileEntity;
+import com.jerry.mekextras.common.tier.BTier;
 import mekanism.common.tile.base.TileEntityMekanism;
 import mekanism.common.upgrade.BinUpgradeData;
+import com.jerry.mekextras.common.upgrade.ExtraBinUpgradeData;
 import mekanism.common.upgrade.IUpgradeData;
 import mekanism.common.util.MekanismUtils;
-import mekanism.common.util.NBTUtils;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.HolderLookup.Provider;
+import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
-import net.neoforged.neoforge.items.IItemHandler;
-
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
+import org.jetbrains.annotations.UnknownNullability;
+import org.jspecify.annotations.Nullable;
 
 public class TileEntityExtraBin extends TileEntityMekanism implements IConfigurable {
 
     @Nullable
-    private BlockCapabilityCache<IItemHandler, @Nullable Direction> targetInventory;
+    private BlockCapabilityCache<ResourceHandler<ItemResource>, @Nullable Direction> targetInventory;
     public int addTicks = 0;
     public int removeTicks = 0;
     private int delayTicks;
     private boolean needsSync;
-    private BTier tier;
+    private final BTier tier;
 
-    @WrappingComputerMethod(wrapper = SpecialComputerMethodWrapper.ComputerIInventorySlotWrapper.class, methodNames = "getStored", docPlaceholder = "bin")
+    @UnknownNullability//Initialized via getInitialInventory
+    @WrappingComputerMethod(wrapper = ComputerIInventorySlotWrapper.class, methodNames = "getStored", docPlaceholder = "bin")
     ExtraBinInventorySlot binSlot;
 
     public TileEntityExtraBin(Holder<Block> blockProvider, BlockPos pos, BlockState state) {
+        tier = Objects.requireNonNull(java.util.Objects.requireNonNull(com.jerry.mekextras.common.block.attribute.ExtraAttribute.getAdvancedTier(blockProvider, BTier.class)));
         super(blockProvider, pos, state);
         delaySupplier = NO_DELAY;
     }
 
     @Override
-    protected void presetVariables() {
-        super.presetVariables();
-        tier = ExtraAttribute.getAdvancedTier(getBlockHolder(), BTier.class);
-    }
-
-    @NotNull
-    @Override
-    protected IInventorySlotHolder getInitialInventory(IContentsListener listener) {
-        InventorySlotHelper builder = InventorySlotHelper.forSide(this::getDirection);
-        builder.addSlot(binSlot = ExtraBinInventorySlot.create(listener, tier));
+    protected IContainerHolder<IInventorySlot> getInitialInventory(IContentsListener listener) {
+        MekContainerHelper<IInventorySlot> builder = MekContainerHelper.forSide(facingSupplier);
+        builder.addContainer(binSlot = ExtraBinInventorySlot.create(listener, tier));
         return builder.build();
     }
 
@@ -92,27 +86,29 @@ public class TileEntityExtraBin extends TileEntityMekanism implements IConfigura
     }
 
     @Override
-    protected boolean onUpdateServer() {
-        boolean sendUpdatePacket = super.onUpdateServer();
+    protected boolean onUpdateServer(ServerLevel level) {
+        boolean sendUpdatePacket = super.onUpdateServer(level);
         addTicks = Math.max(0, addTicks - 1);
         removeTicks = Math.max(0, removeTicks - 1);
         delayTicks = Math.max(0, delayTicks - 1);
         if (delayTicks == 0) {
-            if (getActive()) {
-                // Note: We can't just pass "this" and have to instead look up the capability to make sure we respect
-                // any sidedness
-                // we short circuit looking it up from the world though, and just query the provider we add to the tile
-                // directly
-                IItemHandler capability = CapabilityTileEntity.ITEM_HANDLER_PROVIDER.getCapability(this, Direction.DOWN);
+            if (getActive() && !binSlot.isEmpty()) {
+                //Note: We can't just pass "this" and have to instead look up the capability to make sure we respect any sidedness
+                // we short circuit looking it up from the world though, and just query the provider we add to the tile directly
+                ResourceHandler<ItemResource> capability = ITEM_HANDLER_PROVIDER.getCapability(this, Direction.DOWN);
                 HandlerTransitRequest request = new HandlerTransitRequest(capability);
-                request.addItem(binSlot.getBottomStack(), 0);
+                //Note: Instead of getting the bin item type, we just get the stored resource as we only do things if it isn't empty anyway
+                ItemResource storedType = binSlot.resource();
+                //Limit how much we allow sending at once to a single stack of the stored item
+                request.addItem(storedType, Math.min(binSlot.amountAsInt(), storedType.getMaxStackSize()), 0);
                 if (targetInventory == null) {
-                    targetInventory = Capabilities.ITEM.createCache((ServerLevel) level, getBlockPos().below(), Direction.UP);
+                    targetInventory = Capabilities.ITEM.createCache(level, getBlockPos().below(), Direction.UP);
                 }
-                TransitRequest.TransitResponse response = request.eject(this, targetInventory.getCapability(), 0, LogisticalTransporterBase::getColor);
-                if (!response.isEmpty()) {
-                    int sendingAmount = response.getSendingAmount();
-                    MekanismUtils.logMismatchedStackSize(binSlot.shrinkStack(sendingAmount, Action.EXECUTE), sendingAmount);
+                try (Transaction transaction = Transaction.openRoot()) {
+                    TransitResponse response = request.eject(this, targetInventory.getCapability(), 1, null, transaction);
+                    if (response.useAll(transaction)) {
+                        transaction.commit();
+                    }
                 }
                 delayTicks = MekanismUtils.TICKS_PER_HALF_SECOND;
             }
@@ -127,17 +123,14 @@ public class TileEntityExtraBin extends TileEntityMekanism implements IConfigura
     }
 
     @Override
-    public InteractionResult onSneakRightClick(Player player) {
+    public InteractionResult onSneakRightClick(Level level, Player player) {
         setActive(!getActive());
-        Level world = getLevel();
-        if (world != null) {
-            world.playSound(null, getBlockPos().getX(), getBlockPos().getY(), getBlockPos().getZ(), SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.BLOCKS, 0.3F, 1);
-        }
+        level.playSound(null, getBlockPos().getX(), getBlockPos().getY(), getBlockPos().getZ(), SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.BLOCKS, 0.3F, 1);
         return InteractionResult.SUCCESS;
     }
 
     @Override
-    public InteractionResult onRightClick(Player player) {
+    public InteractionResult onRightClick(Level level, Player player) {
         return InteractionResult.PASS;
     }
 
@@ -147,10 +140,10 @@ public class TileEntityExtraBin extends TileEntityMekanism implements IConfigura
 
     public boolean setLocked(boolean isLocked) {
         if (binSlot.setLocked(isLocked)) {
-            if (getLevel() != null && !isRemote()) {
+            if (level != null && !level.isClientSide()) {
                 needsSync = true;
                 markForSave();
-                getLevel().playSound(null, getBlockPos().getX(), getBlockPos().getY(), getBlockPos().getZ(), SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.BLOCKS, 0.3F, 1);
+                level.playSound(null, getBlockPos().getX(), getBlockPos().getY(), getBlockPos().getZ(), SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.BLOCKS, 0.3F, 1);
             }
             return true;
         }
@@ -158,22 +151,19 @@ public class TileEntityExtraBin extends TileEntityMekanism implements IConfigura
     }
 
     @Override
-    public void parseUpgradeData(HolderLookup.Provider provider, @NotNull IUpgradeData upgradeData) {
-        if (upgradeData instanceof ExtraBinUpgradeData(boolean redstone1, ExtraBinInventorySlot slot)) {
-            redstone = redstone1;
-            binSlot.setStack(slot.getStack());
-            binSlot.setLockStack(slot.getLockStack());
-        } else if (upgradeData instanceof BinUpgradeData(boolean redstone1, BinInventorySlot slot)) {
-            redstone = redstone1;
-            binSlot.setStack(slot.getStack());
-            binSlot.setLockStack(slot.getLockStack());
-            binSlot.deserializeNBT(provider, slot.serializeNBT(provider));
+    public void parseUpgradeData(IUpgradeData upgradeData, Provider provider, TransactionContext transaction) {
+        if (upgradeData instanceof ExtraBinUpgradeData(boolean redstoneData, ExtraBinInventorySlot slot)) {
+            redstone = redstoneData;
+            binSlot.copyContents(slot, transaction);
+        } else if (upgradeData instanceof BinUpgradeData data) {
+            redstone = data.redstone();
+            binSlot.copyContents(data.binSlot(), transaction);
+            binSlot.setLocked(data.binSlot().isLocked());
         } else {
-            super.parseUpgradeData(provider, upgradeData);
+            super.parseUpgradeData(upgradeData, provider, transaction);
         }
     }
 
-    @NotNull
     @Override
     public ExtraBinUpgradeData getUpgradeData(HolderLookup.Provider provider) {
         return new ExtraBinUpgradeData(redstone, getBinSlot());
@@ -182,44 +172,42 @@ public class TileEntityExtraBin extends TileEntityMekanism implements IConfigura
     @Override
     public void onContentsChanged() {
         super.onContentsChanged();
-        if (level != null && !isRemote()) {
+        if (level != null && !level.isClientSide()) {
             needsSync = true;
         }
     }
 
-    @NotNull
     @Override
-    public CompoundTag getReducedUpdateTag(@NotNull HolderLookup.Provider provider) {
-        CompoundTag updateTag = super.getReducedUpdateTag(provider);
-        updateTag.put(SerializationConstants.ITEM, binSlot.serializeNBT(provider));
-        return updateTag;
+    public void writeReducedUpdatedTag(ValueOutput output) {
+        super.writeReducedUpdatedTag(output);
+        output.putChild(SerializationConstants.ITEM, binSlot);
     }
 
     @Override
-    public void handleUpdateTag(@NotNull CompoundTag tag, @NotNull HolderLookup.Provider provider) {
-        super.handleUpdateTag(tag, provider);
-        NBTUtils.setCompoundIfPresent(tag, SerializationConstants.ITEM, nbt -> binSlot.deserializeNBT(provider, nbt));
+    public void handleUpdateTag(ValueInput input) {
+        super.handleUpdateTag(input);
+        input.readChild(SerializationConstants.ITEM, binSlot);
     }
 
     @Override
-    protected void collectImplicitComponents(@NotNull DataComponentMap.Builder builder) {
-        // Note: In theory doing this before super doesn't matter, but we want to make sure that the lock is set before
+    protected void collectImplicitComponents(DataComponentMap.Builder builder) {
+        //Note: In theory doing this before super doesn't matter, but we want to make sure that the lock is set before
         // setting the data on the item just for good measure
-        builder.set(MekanismDataComponents.LOCK, LockData.create(binSlot.getLockStack()));
+        builder.set(MekanismDataComponents.LOCK, LockData.create(binSlot.getLockType()));
         super.collectImplicitComponents(builder);
     }
 
     @Override
-    protected void applyImplicitComponents(@NotNull BlockEntity.DataComponentInput input) {
-        // Apply the lock before processing the stored data
-        binSlot.setLockStack(input.getOrDefault(MekanismDataComponents.LOCK, LockData.EMPTY).lock());
+    protected void applyImplicitComponents(DataComponentGetter input) {
+        //Apply the lock before processing the stored data
+        binSlot.setLockType(input.getOrDefault(MekanismDataComponents.LOCK, LockData.EMPTY).lock(), null);
         super.applyImplicitComponents(input);
     }
 
-    // Methods relating to IComputerTile
+    //Methods relating to IComputerTile
     @ComputerMethod(methodDescription = "Get the maximum number of items the bin can contain.")
-    int getCapacity() {
-        return binSlot.getLimit(binSlot.getStack());
+    long getCapacity() {
+        return binSlot.capacityAsLong(binSlot.resource());
     }
 
     @ComputerMethod(methodDescription = "If true, the Bin is locked to a particular item type.")
@@ -228,13 +216,15 @@ public class TileEntityExtraBin extends TileEntityMekanism implements IConfigura
     }
 
     @ComputerMethod(methodDescription = "Get the type of item the Bin is locked to (or Air if not locked)")
-    ItemStack getLock() {
-        return binSlot.getLockStack();
+    ItemResource getLock() {
+        return binSlot.getLockType();
     }
 
     @ComputerMethod(methodDescription = "Lock the Bin to the currently stored item type. The Bin must not be creative, empty, or already locked")
     void lock() throws ComputerException {
-        if (binSlot.isEmpty()) {
+        if (false) {
+            throw new ComputerException("Creative bins cannot be locked!");
+        } else if (binSlot.isEmpty()) {
             throw new ComputerException("Empty bins cannot be locked!");
         } else if (!setLocked(true)) {
             throw new ComputerException("This bin is already locked!");
@@ -243,9 +233,11 @@ public class TileEntityExtraBin extends TileEntityMekanism implements IConfigura
 
     @ComputerMethod(methodDescription = "Unlock the Bin's fixed item type. The Bin must not be creative, or already unlocked")
     void unlock() throws ComputerException {
-        if (!setLocked(true)) {
+        if (false) {
+            throw new ComputerException("Creative bins cannot be unlocked!");
+        } else if (!setLocked(true)) {
             throw new ComputerException("This bin is not locked!");
         }
     }
-    // End methods IComputerTile
+    //End methods IComputerTile
 }

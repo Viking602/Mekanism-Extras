@@ -1,11 +1,11 @@
 package com.jerry.genextras.common.tile.naquadah;
 
+import mekanism.common.component.containers.type.ContainerType;
+import mekanism.common.component.containers.type.IContainerType;
 import com.jerry.genextras.common.content.naquadah.NaquadahReactorMultiblockData;
 import com.jerry.genextras.common.registries.GenExtraBlocks;
-
-import mekanism.common.attachments.containers.ContainerType;
-
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.state.BlockState;
 
 public class TileEntityNaquadahReactorController extends TileEntityNaquadahReactorCasing {
@@ -16,8 +16,8 @@ public class TileEntityNaquadahReactorController extends TileEntityNaquadahReact
     }
 
     @Override
-    protected boolean onUpdateServer(NaquadahReactorMultiblockData multiblock) {
-        boolean needsPacket = super.onUpdateServer(multiblock);
+    protected boolean onUpdateServer(ServerLevel level, NaquadahReactorMultiblockData multiblock) {
+        boolean needsPacket = super.onUpdateServer(level, multiblock);
         setActive(multiblock.isFormed());
         return needsPacket;
     }
@@ -34,7 +34,7 @@ public class TileEntityNaquadahReactorController extends TileEntityNaquadahReact
     }
 
     @Override
-    public boolean persists(ContainerType<?, ?, ?> type) {
+    public boolean persists(IContainerType<?, ?> type) {
         if (type == ContainerType.CHEMICAL || type == ContainerType.FLUID || type == ContainerType.HEAT) {
             return false;
         }

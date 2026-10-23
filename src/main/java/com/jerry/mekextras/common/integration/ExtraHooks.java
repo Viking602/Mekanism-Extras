@@ -3,7 +3,7 @@ package com.jerry.mekextras.common.integration;
 import com.jerry.genextras.common.config.GeneratorsExtraConfig;
 import com.jerry.genextras.common.registries.*;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.InterModComms;
 import net.neoforged.fml.ModContainer;
@@ -24,8 +24,8 @@ public class ExtraHooks {
             InterModComms.sendTo(modid, method, toSend);
         }
 
-        public ResourceLocation rl(String path) {
-            return ResourceLocation.fromNamespaceAndPath(modid, path);
+        public Identifier rl(String path) {
+            return Identifier.fromNamespaceAndPath(modid, path);
         }
 
         public void assertLoaded() {

@@ -1,54 +1,63 @@
 package com.jerry.mekextras.common.capabilities.energy;
+import mekanism.common.capabilities.energy.*;
 
-import com.jerry.mekextras.common.tier.ECTier;
-
-import mekanism.api.Action;
+import java.util.Objects;
+import java.util.function.IntSupplier;
+import java.util.function.LongSupplier;
 import mekanism.api.AutomationType;
 import mekanism.api.IContentsListener;
 import mekanism.api.functions.ConstantPredicates;
-import mekanism.common.capabilities.energy.BasicEnergyContainer;
-
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.Objects;
-import java.util.function.LongSupplier;
+import mekanism.api.transaction.ITransactionHelper;
+import mekanism.api.transaction.RateLimitTracker;
+import com.jerry.mekextras.common.tier.ECTier;
+import com.jerry.mekextras.common.tile.TileEntityExtraEnergyCube;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
+import org.jetbrains.annotations.Range;
+import org.jspecify.annotations.Nullable;
 
 public class ExtraEnergyCubeEnergyContainer extends BasicEnergyContainer {
 
-    public static ExtraEnergyCubeEnergyContainer create(ECTier tier, @Nullable IContentsListener listener) {
-        Objects.requireNonNull(tier, "Energy cube tier cannot be null");
-        return new ExtraEnergyCubeEnergyContainer(tier, listener);
+    public static ExtraEnergyCubeEnergyContainer create(TileEntityExtraEnergyCube tile, @Nullable IContentsListener listener) {
+        Objects.requireNonNull(tile, "Energy cube tile cannot be null");
+        ECTier tier = tile.getTier();
+        LongSupplier gameTimeSupplier = tile::getGameTime;
+        IntSupplier rateLimit = tier::getTransferRate;
+        //Only limit the internal rate to change the speed at which this can be filled or drained by an item stored in a slot
+        return new ExtraEnergyCubeEnergyContainer(tier, ITransactionHelper.INSTANCE.createInternalOnlyRateLimit(gameTimeSupplier, rateLimit),
+              ITransactionHelper.INSTANCE.createInternalOnlyRateLimit(gameTimeSupplier, rateLimit), listener);
     }
 
     private final boolean isCreative;
-    private final LongSupplier rate;
 
-    protected ExtraEnergyCubeEnergyContainer(ECTier tier, @Nullable IContentsListener listener) {
-        super(tier.getMaxEnergy(), ConstantPredicates.alwaysTrue(), ConstantPredicates.alwaysTrue(), listener);
+    private ExtraEnergyCubeEnergyContainer(ECTier tier, @Nullable RateLimitTracker insertionRateLimiter, @Nullable RateLimitTracker extractionRateLimiter,
+          @Nullable IContentsListener listener) {
+        super(tier.getCapacity(), ConstantPredicates.alwaysTrue(), ConstantPredicates.alwaysTrue(), insertionRateLimiter, extractionRateLimiter, listener);
         isCreative = false;
-        rate = tier::getOutput;
     }
 
     @Override
-    protected long getInsertRate(@Nullable AutomationType automationType) {
-        // Only limit the internal rate to change the speed at which this can be filled from an item
-        return automationType == AutomationType.INTERNAL ? rate.getAsLong() : super.getInsertRate(automationType);
+    @Range(from = 0, to = Integer.MAX_VALUE)
+    public int insert(@Range(from = 0, to = Integer.MAX_VALUE) int amount, TransactionContext transaction, AutomationType automationType) {
+        //Note: Unlike other creative items, the creative energy cube does not allow changing it to always full
+        if (isCreative) {
+            //Return the result without actually changing the contents (accepting without providing any changes)
+            try (Transaction simulation = Transaction.open(transaction)) {
+                return super.insert(amount, simulation, automationType);
+            }
+        }
+        return super.insert(amount, transaction, automationType);
     }
 
     @Override
-    public long getExtractRate(AutomationType automationType) {
-        return automationType == AutomationType.INTERNAL ? rate.getAsLong() : super.getExtractRate(automationType);
-    }
-
-    @Override
-    public long insert(long amount, Action action, @NotNull AutomationType automationType) {
-        // Note: Unlike other creative items, the creative energy cube does not allow changing it to always full
-        return super.insert(amount, action.combine(!isCreative), automationType);
-    }
-
-    @Override
-    public long extract(long amount, Action action, @NotNull AutomationType automationType) {
-        return super.extract(amount, action.combine(!isCreative), automationType);
+    @Range(from = 0, to = Integer.MAX_VALUE)
+    public int extract(@Range(from = 0, to = Integer.MAX_VALUE) int amount, TransactionContext transaction, AutomationType automationType) {
+        if (isCreative) {
+            //Return the result without actually changing the contents (accepting without providing any changes
+            try (Transaction simulation = Transaction.open(transaction)) {
+                return super.extract(amount, simulation, automationType);
+            }
+        }
+        return super.extract(amount, transaction, automationType);
     }
 }

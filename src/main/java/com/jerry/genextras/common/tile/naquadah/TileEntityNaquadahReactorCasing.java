@@ -1,19 +1,15 @@
 package com.jerry.genextras.common.tile.naquadah;
 
+import mekanism.common.inventory.container.MekanismContainer;
+import mekanism.common.inventory.container.sync.dynamic.SyncMapper;
+import mekanism.common.lib.multiblock.MultiblockType;
+import mekanism.common.tile.prefab.TileEntityMultiblock;
 import com.jerry.mekextras.MekanismExtras;
-
 import com.jerry.genextras.common.content.naquadah.NaquadahReactorMultiblockData;
 import com.jerry.genextras.common.registries.GenExtraBlocks;
 import com.jerry.genextras.common.registries.GenExtraContainerTypes;
-
-import mekanism.common.inventory.container.MekanismContainer;
-import mekanism.common.inventory.container.sync.dynamic.SyncMapper;
-import mekanism.common.lib.multiblock.MultiblockManager;
-import mekanism.common.tile.prefab.TileEntityMultiblock;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
-import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -33,7 +29,7 @@ public class TileEntityNaquadahReactorCasing extends TileEntityMultiblock<Naquad
     }
 
     @Override
-    public MultiblockManager<NaquadahReactorMultiblockData> getManager() {
+    public MultiblockType<NaquadahReactorMultiblockData> getMultiblockType() {
         return MekanismExtras.naquadahReactorManager;
     }
 
@@ -45,7 +41,7 @@ public class TileEntityNaquadahReactorCasing extends TileEntityMultiblock<Naquad
     public void setInjectionRateFromPacket(int rate) {
         NaquadahReactorMultiblockData multiblock = getMultiblock();
         if (multiblock.isFormed()) {
-            multiblock.setInjectionRate(Mth.clamp(rate - (rate % 2), 0, NaquadahReactorMultiblockData.MAX_INJECTION));
+            multiblock.setInjectionRate(Math.clamp(rate - (rate % 2), 0, NaquadahReactorMultiblockData.MAX_INJECTION));
             markForSave();
         }
     }

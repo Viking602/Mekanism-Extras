@@ -2,7 +2,7 @@ package com.jerry.mekextras.common.tags;
 
 import com.jerry.mekextras.MekanismExtras;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
@@ -43,7 +43,7 @@ public class ExtraTags {
         public static final TagKey<Item> ENRICHED_SPECTRUM = tag("enriched/spectrum");
 
         private static TagKey<Item> commonTag(String name) {
-            return ItemTags.create(ResourceLocation.fromNamespaceAndPath("c", name));
+            return ItemTags.create(Identifier.fromNamespaceAndPath("c", name));
         }
 
         private static TagKey<Item> tag(String name) {

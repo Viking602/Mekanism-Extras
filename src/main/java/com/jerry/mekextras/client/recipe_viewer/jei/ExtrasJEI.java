@@ -7,14 +7,14 @@ import com.jerry.mekextras.common.registries.ExtraFluids;
 import com.jerry.genextras.common.GenExtraLang;
 import com.jerry.genextras.common.registries.GenExtraFluids;
 
-import mekanism.api.annotations.NothingNullByDefault;
+import org.jspecify.annotations.NullMarked;
 import mekanism.client.recipe_viewer.jei.MekanismJEI;
 import mekanism.client.recipe_viewer.type.RecipeViewerRecipeType;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.fluids.FluidType;
 
-import com.jerry.mekmm.client.recipe_viewer.MoreMachineRecipeViewerRecipeType;
+import com.jerry.mekmm.client.recipe_viewer.MMRecipeViewerRecipeType;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.constants.RecipeTypes;
@@ -23,13 +23,13 @@ import mezz.jei.api.registration.IRecipeCatalystRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
 
 @JeiPlugin
-@NothingNullByDefault
+@NullMarked
 public class ExtrasJEI implements IModPlugin {
 
     @Override
-    public ResourceLocation getPluginUid() {
+    public Identifier getPluginUid() {
         // 不能使用MekanismExtras.rl()，原因见MekanismJEI.class
-        return ResourceLocation.fromNamespaceAndPath(MekanismExtras.MOD_ID, "jei_plugin");
+        return Identifier.fromNamespaceAndPath(MekanismExtras.MOD_ID, "jei_plugin");
     }
 
     @Override
@@ -60,9 +60,9 @@ public class ExtrasJEI implements IModPlugin {
         ExtraCatalystRegistryHelper.register(registry, RecipeTypes.SMELTING, RecipeViewerRecipeType.VANILLA_SMELTING.workstations());
 
         if (MekanismExtras.hooks.mekmm.isLoaded()) {
-            ExtraMMCatalystRegistryHelper.register(registry, MoreMachineRecipeViewerRecipeType.RECYCLER, MoreMachineRecipeViewerRecipeType.PLANTING_STATION, MoreMachineRecipeViewerRecipeType.REPLICATOR,
-                    MoreMachineRecipeViewerRecipeType.FLUID_REPLICATOR, MoreMachineRecipeViewerRecipeType.CHEMICAL_REPLICATOR, MoreMachineRecipeViewerRecipeType.STAMPING, MoreMachineRecipeViewerRecipeType.LATHE, MoreMachineRecipeViewerRecipeType.ROLLING_MILL,
-                    MoreMachineRecipeViewerRecipeType.PRESSING);
+            ExtraMMCatalystRegistryHelper.register(registry, MMRecipeViewerRecipeType.RECYCLER, MMRecipeViewerRecipeType.PLANTING_STATION, MMRecipeViewerRecipeType.REPLICATOR,
+                    MMRecipeViewerRecipeType.FLUID_REPLICATOR, MMRecipeViewerRecipeType.CHEMICAL_REPLICATOR, MMRecipeViewerRecipeType.STAMPING, MMRecipeViewerRecipeType.LATHE, MMRecipeViewerRecipeType.ROLLING_MILL,
+                    MMRecipeViewerRecipeType.PRESSING);
             ExtraAFCatalystRegistryHelper.register(registry, RecipeViewerRecipeType.OXIDIZING, RecipeViewerRecipeType.DISSOLUTION, RecipeViewerRecipeType.WASHING, RecipeViewerRecipeType.CRYSTALLIZING,
                     RecipeViewerRecipeType.REACTION, RecipeViewerRecipeType.CENTRIFUGING, RecipeViewerRecipeType.NUTRITIONAL_LIQUIFICATION, RecipeViewerRecipeType.PIGMENT_EXTRACTING, RecipeViewerRecipeType.PAINTING);
         }

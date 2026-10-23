@@ -3,7 +3,7 @@ package com.jerry.mekextras.common.integration.mekmm.inventory.slot;
 import com.jerry.mekextras.common.integration.mekmm.tile.factory.TileEntityExtraMoreMachineFactory;
 
 import mekanism.api.IContentsListener;
-import mekanism.api.annotations.NothingNullByDefault;
+import org.jspecify.annotations.NullMarked;
 import mekanism.api.functions.ConstantPredicates;
 import mekanism.common.inventory.container.slot.ContainerSlotType;
 import mekanism.common.inventory.slot.BasicInventorySlot;
@@ -12,7 +12,7 @@ import net.minecraft.world.item.ItemStack;
 
 import org.jetbrains.annotations.Nullable;
 
-@NothingNullByDefault
+@NullMarked
 public class ExtraMoreMachineFactoryOutputInventorySlot extends BasicInventorySlot {
 
     private final TileEntityExtraMoreMachineFactory<?> factory;
@@ -22,17 +22,13 @@ public class ExtraMoreMachineFactoryOutputInventorySlot extends BasicInventorySl
     }
 
     private ExtraMoreMachineFactoryOutputInventorySlot(TileEntityExtraMoreMachineFactory<?> factory, @Nullable IContentsListener listener, int x, int y) {
-        super(ConstantPredicates.alwaysTrueBi(), ConstantPredicates.internalOnly(), ConstantPredicates.alwaysTrue(), listener, x, y);
+        super(ConstantPredicates.alwaysTrueBi(), ConstantPredicates.internalOnly(), ConstantPredicates.alwaysTrue(), null, null, listener, x, y);
         setSlotType(ContainerSlotType.OUTPUT);
         this.factory = factory;
     }
 
     @Override
-    public int getLimit(ItemStack stack) {
-        try {
-            return Math.multiplyExact(super.getLimit(stack), 8 << factory.tier.ordinal());
-        } catch (ArithmeticException ignored) {
-            return Integer.MAX_VALUE;
-        }
+    public long capacityAsLong(net.neoforged.neoforge.transfer.item.ItemResource resource) {
+        return super.capacityAsLong(resource) * (8L << factory.tier.ordinal());
     }
 }

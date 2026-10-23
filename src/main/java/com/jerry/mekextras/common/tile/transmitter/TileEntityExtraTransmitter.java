@@ -29,21 +29,15 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Comparator;
+import mekanism.common.lib.transaction.TransactionHelper;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 
-public class TileEntityExtraTransmitter extends TileEntityTransmitter implements IExtraAlloyInteraction {
+public abstract class TileEntityExtraTransmitter extends TileEntityTransmitter implements IExtraAlloyInteraction {
 
     public TileEntityExtraTransmitter(Holder<Block> blockProvider, BlockPos pos, BlockState state) {
         super(blockProvider, pos, state);
-    }
-
-    @Override
-    protected Transmitter<?, ?, ?> createTransmitter(Holder<Block> blockProvider) {
-        return null;
-    }
-
-    @Override
-    public TransmitterType getTransmitterType() {
-        return null;
     }
 
     @NotNull
@@ -52,20 +46,18 @@ public class TileEntityExtraTransmitter extends TileEntityTransmitter implements
     }
 
     public static void tickServer(Level level, BlockPos blockPos, BlockState blockState, TileEntityExtraTransmitter entityTransmitter) {
-        entityTransmitter.onUpdateServer();
+        if (level instanceof net.minecraft.server.level.ServerLevel serverLevel) entityTransmitter.onUpdateServer(serverLevel);
     }
 
     @Override
-    public void onExtraAlloyInteraction(Player player, ItemStack stack, @NotNull IAdvancedTier tier) {
-        if (getLevel() != null && getTransmitter().hasTransmitterNetwork()) {
-            DynamicNetwork<?, ?, ?> transmitterNetwork = getTransmitter().getTransmitterNetwork();
+    public void onExtraAlloyInteraction(Player player, ItemStack stack, IAdvancedTier tier) {
+        Level level = getLevel();
+        if (level == null) return;
+        BlockPos pos = getBlockPos();
+        if (getTransmitter().hasTransmitterNetwork()) {
+            DynamicNetwork<?, ?, ?> transmitterNetwork = getTransmitter().getTransmitterNetworkNN();
             List<Transmitter<?, ?, ?>> list = new ArrayList<>(transmitterNetwork.getTransmitters());
-            list.sort((o1, o2) -> {
-                if (o1 != null && o2 != null) {
-                    return Double.compare(o1.getBlockPos().distSqr(worldPosition), o2.getBlockPos().distSqr(worldPosition));
-                }
-                return 0;
-            });
+            list.sort(Comparator.comparingDouble(transmitter -> transmitter.getBlockPos().distSqr(pos)));
             boolean sharesSet = false;
             int upgraded = 0;
             for (Transmitter<?, ?, ?> transmitter : list) {
@@ -74,33 +66,37 @@ public class TileEntityExtraTransmitter extends TileEntityTransmitter implements
                     BlockState state = transmitterTile.getBlockState();
                     BlockState upgradeState = transmitterTile.upgradeResult(state, tier.getAdvanceTier());
                     if (state == upgradeState) {
-                        // Skip if it would not actually upgrade anything
+                        //Skip if it would not actually upgrade anything
                         continue;
                     }
                     if (!sharesSet) {
                         if (transmitterNetwork instanceof DynamicBufferedNetwork dynamicNetwork) {
-                            // Ensure we save the shares to the tiles so that they can properly take them, and they
-                            // don't get voided
-                            dynamicNetwork.validateSaveShares((BufferedTransmitter<?, ?, ?, ?>) transmitter);
+                            //Ensure we save the shares to the tiles so that they can properly take them, and they don't get voided
+                            try (Transaction transaction = TransactionHelper.openTransactionSafe()) {
+                                dynamicNetwork.validateSaveShares((BufferedTransmitter<?, ?, ?, ?>) transmitter, transaction);
+                                transaction.commit();
+                            }
                         }
                         sharesSet = true;
                     }
                     transmitter.startUpgrading();
                     TransmitterUpgradeData upgradeData = upgradeableTransmitter.getUpgradeData();
                     BlockPos transmitterPos = transmitter.getBlockPos();
-                    Level transmitterWorld = transmitter.getLevel();
                     if (upgradeData == null) {
                         Mekanism.logger.warn("Got no upgrade data for transmitter at position: {} in {} but it said it would be able to provide some.",
-                                transmitterPos, transmitterWorld);
+                              transmitterPos, level);
                     } else {
-                        transmitterWorld.setBlockAndUpdate(transmitterPos, upgradeState);
-                        TileEntityExtraTransmitter upgradedTile = WorldUtils.getTileEntity(TileEntityExtraTransmitter.class, transmitterWorld, transmitterPos);
+                        level.setBlockAndUpdate(transmitterPos, upgradeState);
+                        TileEntityExtraTransmitter upgradedTile = WorldUtils.getTileEntity(TileEntityExtraTransmitter.class, level, transmitterPos);
                         if (upgradedTile == null) {
-                            Mekanism.logger.warn("Error upgrading transmitter at position: {} in {}.", transmitterPos, transmitterWorld);
+                            Mekanism.logger.warn("Error upgrading transmitter at position: {} in {}.", transmitterPos, level);
                         } else {
                             Transmitter<?, ?, ?> upgradedTransmitter = upgradedTile.getTransmitter();
                             if (upgradedTransmitter instanceof IExtraUpgradeableTransmitter) {
-                                transferUpgradeData((IExtraUpgradeableTransmitter<?>) upgradedTransmitter, upgradeData);
+                                try (Transaction transaction = TransactionHelper.openTransactionSafe()) {
+                                    transferUpgradeData((IExtraUpgradeableTransmitter<?>) upgradedTransmitter, upgradeData, transaction);
+                                    transaction.commit();
+                                }
                             } else {
                                 Mekanism.logger.warn("Unhandled upgrade data.", new IllegalStateException());
                             }
@@ -113,11 +109,10 @@ public class TileEntityExtraTransmitter extends TileEntityTransmitter implements
                 }
             }
             if (upgraded > 0) {
-                // Invalidate the network so that it properly has new references to everything
+                //Invalidate the network so that it properly has new references to everything
                 transmitterNetwork.invalidate(null);
-                if (!player.isCreative()) {
-                    stack.shrink(1);
-                }
+                //TODO - 26.1: Figure out what other uses of ItemStack#shrink should be replaced with ItemStack#consume
+                stack.consume(1, player);
                 if (player instanceof ServerPlayer serverPlayer) {
                     MekanismCriteriaTriggers.ALLOY_UPGRADE.value().trigger(serverPlayer);
                 }
@@ -125,11 +120,12 @@ public class TileEntityExtraTransmitter extends TileEntityTransmitter implements
         }
     }
 
-    private <DATA extends TransmitterUpgradeData> void transferUpgradeData(IExtraUpgradeableTransmitter<DATA> upgradeableTransmitter, TransmitterUpgradeData data) {
+    private <DATA extends TransmitterUpgradeData> void transferUpgradeData(IExtraUpgradeableTransmitter<DATA> upgradeableTransmitter, TransmitterUpgradeData data, TransactionContext transaction) {
         if (upgradeableTransmitter.dataTypeMatches(data)) {
-            upgradeableTransmitter.parseUpgradeData((DATA) data);
+            upgradeableTransmitter.parseUpgradeData((DATA) data, transaction);
         } else {
             Mekanism.logger.warn("Unhandled upgrade data.", new IllegalStateException());
         }
     }
+
 }

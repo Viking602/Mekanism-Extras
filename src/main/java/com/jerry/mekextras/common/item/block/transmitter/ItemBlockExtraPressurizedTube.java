@@ -31,7 +31,7 @@ public class ItemBlockExtraPressurizedTube extends ItemBlockTooltip<BlockSmallTr
     @NotNull
     @Override
     public TubeTier getTier() {
-        return Objects.requireNonNull(Attribute.getTier(getBlock(), TubeTier.class));
+        return Objects.requireNonNull(Attribute.getTierNN(getBlock(), TubeTier.class));
     }
 
     public @NotNull Component getName(@NotNull ItemStack stack) {
@@ -39,17 +39,17 @@ public class ItemBlockExtraPressurizedTube extends ItemBlockTooltip<BlockSmallTr
     }
 
     @Override
-    protected void addDetails(@NotNull ItemStack stack, @NotNull TooltipContext context, @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
-        super.addDetails(stack, context, tooltip, flag);
-        tooltip.add(MekanismLang.CAPABLE_OF_TRANSFERRING.translateColored(EnumColor.DARK_GRAY));
-        tooltip.add(MekanismLang.CHEMICAL.translateColored(EnumColor.PURPLE, MekanismLang.MEKANISM));
+    protected void addDetails(@NotNull ItemStack stack, net.neoforged.neoforge.transfer.access.ItemAccess itemAccess, @NotNull TooltipContext context, net.minecraft.world.item.component.TooltipDisplay tooltipDisplay, java.util.function.Consumer<Component> tooltip, @NotNull TooltipFlag flag) {
+        super.addDetails(stack, itemAccess, context, tooltipDisplay, tooltip, flag);
+        tooltip.accept(MekanismLang.CAPABLE_OF_TRANSFERRING.translateColored(EnumColor.DARK_GRAY));
+        tooltip.accept(MekanismLang.CHEMICAL.translateColored(EnumColor.PURPLE, MekanismLang.MEKANISM));
     }
 
     @Override
-    protected void addStats(@NotNull ItemStack stack, @NotNull TooltipContext context, @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
-        super.addStats(stack, context, tooltip, flag);
+    protected void addStats(@NotNull ItemStack stack, net.neoforged.neoforge.transfer.access.ItemAccess itemAccess, @NotNull TooltipContext context, net.minecraft.world.item.component.TooltipDisplay tooltipDisplay, java.util.function.Consumer<Component> tooltip, @NotNull TooltipFlag flag) {
+        super.addStats(stack, itemAccess, context, tooltipDisplay, tooltip, flag);
         TubeTier tier = getTier();
-        tooltip.add(MekanismLang.CAPACITY_MB_PER_TICK.translateColored(EnumColor.INDIGO, EnumColor.GRAY, TextUtils.format(TTier.getTubeCapacity(tier))));
-        tooltip.add(MekanismLang.PUMP_RATE_MB.translateColored(EnumColor.INDIGO, EnumColor.GRAY, TextUtils.format(TTier.getTubePullAmount(tier))));
+        tooltip.accept(MekanismLang.CAPACITY_MB_PER_TICK.translateColored(EnumColor.INDIGO, EnumColor.GRAY, TextUtils.format(TTier.getTubeCapacity(tier))));
+        tooltip.accept(MekanismLang.PUMP_RATE_MB.translateColored(EnumColor.INDIGO, EnumColor.GRAY, TextUtils.format(TTier.getTubePullAmount(tier))));
     }
 }

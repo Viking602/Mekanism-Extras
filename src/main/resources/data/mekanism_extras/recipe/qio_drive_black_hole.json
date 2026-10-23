@@ -1,16 +1,10 @@
 {
   "type": "mekanism:mek_data",
-  "category":"misc",
+  "category": "misc",
   "key": {
-    "#": {
-      "tag": "c:pellets/antimatter"
-    },
-    "C": {
-      "item": "mekanism_extras:qio_drive_gamma"
-    },
-    "I": {
-      "tag": "c:ingots/lead"
-    }
+    "#": "#c:pellets/antimatter",
+    "C": "mekanism_extras:qio_drive_gamma",
+    "I": "#c:ingots/lead"
   },
   "pattern": [
     "ICI",

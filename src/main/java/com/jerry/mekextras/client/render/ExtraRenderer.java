@@ -3,7 +3,7 @@ package com.jerry.mekextras.client.render;
 import com.jerry.mekextras.MekanismExtras;
 import com.jerry.mekextras.client.render.tileentity.RenderExtraFluidTank;
 
-import net.minecraft.util.FastColor;
+import net.minecraft.util.ARGB;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -14,7 +14,7 @@ public class ExtraRenderer {
 
     @SubscribeEvent
     public static void onStitch(TextureAtlasStitchedEvent event) {
-        RenderExtraFluidTank.resetCachedModels();
+
     }
 
     /**
@@ -31,6 +31,6 @@ public class ExtraRenderer {
             alpha = 1.0F;
         }
 
-        return FastColor.ARGB32.color((int) (255.0F * alpha), red, green, blue);
+        return ARGB.color((int) (255.0F * alpha), red, green, blue);
     }
 }

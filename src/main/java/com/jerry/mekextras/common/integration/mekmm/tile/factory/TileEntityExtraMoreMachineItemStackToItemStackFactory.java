@@ -1,4 +1,11 @@
 package com.jerry.mekextras.common.integration.mekmm.tile.factory;
+import com.jerry.mekextras.api.ExtraUpgrade;
+import com.jerry.mekextras.api.mixin.IMixinMachineEnergyContainer;
+import com.jerry.mekextras.common.block.attribute.ExtraAttribute;
+import com.jerry.mekextras.common.util.ExtraUpgradeUtils;
+
+import com.jerry.mekmm.client.recipe_viewer.MMRecipeViewerRecipeType;
+import com.jerry.mekmm.common.recipe.MoreMachineRecipeType;
 
 import mekanism.api.inventory.IInventorySlot;
 import mekanism.api.math.MathUtils;
@@ -11,19 +18,16 @@ import mekanism.common.recipe.IMekanismRecipeTypeProvider;
 import mekanism.common.recipe.lookup.ISingleRecipeLookupHandler;
 import mekanism.common.recipe.lookup.cache.InputRecipeCache;
 import mekanism.common.upgrade.MachineUpgradeData;
-import mekanism.common.util.InventoryUtils;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.HolderLookup.Provider;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.common.util.TriPredicate;
+import net.neoforged.neoforge.transfer.item.ItemResource;
 
-import com.jerry.mekmm.client.recipe_viewer.MoreMachineRecipeViewerRecipeType;
-import com.jerry.mekmm.common.recipe.MoreMachineRecipeType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,9 +36,9 @@ import java.util.Set;
 
 // Lathe, Rolling Mill
 public class TileEntityExtraMoreMachineItemStackToItemStackFactory extends TileEntityExtraMoreMachineItemToItemFactory<ItemStackToItemStackRecipe> implements
-                                                                   ISingleRecipeLookupHandler.ItemRecipeLookupHandler<ItemStackToItemStackRecipe> {
+                                                              ISingleRecipeLookupHandler.ItemRecipeLookupHandler<ItemStackToItemStackRecipe> {
 
-    private static final TriPredicate<ItemStackToItemStackRecipe, ItemStack, ItemStack> OUTPUT_CHECK = (recipe, input, output) -> InventoryUtils.areItemsStackable(recipe.getOutput(input), output);
+    private static final TriPredicate<ItemStackToItemStackRecipe, ItemResource, ItemResource> OUTPUT_CHECK = (recipe, input, output) -> output.isEmpty() || output.matches(recipe.getOutput(input));
     private static final List<RecipeError> TRACKED_ERROR_TYPES = List.of(
             RecipeError.NOT_ENOUGH_ENERGY,
             RecipeError.NOT_ENOUGH_INPUT,
@@ -47,30 +51,30 @@ public class TileEntityExtraMoreMachineItemStackToItemStackFactory extends TileE
     }
 
     @Override
-    public boolean isItemValidForSlot(@NotNull ItemStack stack) {
+    public boolean isItemValidForSlot(@NotNull ItemResource stack) {
         // contains recipe in general already validated by isValidInputItem
         return true;
     }
 
     @Override
-    public boolean isValidInputItem(@NotNull ItemStack stack) {
+    public boolean isValidInputItem(@NotNull ItemResource stack) {
         return containsRecipe(stack);
     }
 
     @Override
-    protected int getNeededInput(ItemStackToItemStackRecipe recipe, ItemStack inputStack) {
+    protected int getNeededInput(ItemStackToItemStackRecipe recipe, ItemResource inputStack) {
         return MathUtils.clampToInt(recipe.getInput().getNeededAmount(inputStack));
     }
 
     @Override
-    protected boolean isCachedRecipeValid(@Nullable CachedRecipe<ItemStackToItemStackRecipe> cached, @NotNull ItemStack stack) {
+    protected boolean isCachedRecipeValid(@Nullable CachedRecipe<ItemStackToItemStackRecipe> cached, @NotNull ItemResource stack) {
         return cached != null && cached.getRecipe().getInput().testType(stack);
     }
 
     @Override
-    protected ItemStackToItemStackRecipe findRecipe(int process, @NotNull ItemStack fallbackInput, @NotNull IInventorySlot outputSlot,
+    protected ItemStackToItemStackRecipe findRecipe(int process, @NotNull ItemResource fallbackInput, @NotNull IInventorySlot outputSlot,
                                                     @Nullable IInventorySlot secondaryOutputSlot) {
-        return getRecipeType().getInputCache().findTypeBasedRecipe(level, fallbackInput, outputSlot.getStack(), OUTPUT_CHECK);
+        return getRecipeType().getInputCache().findTypeBasedRecipe(level, fallbackInput, outputSlot.resource(), OUTPUT_CHECK);
     }
 
     @NotNull
@@ -78,17 +82,17 @@ public class TileEntityExtraMoreMachineItemStackToItemStackFactory extends TileE
     public IMekanismRecipeTypeProvider<SingleRecipeInput, ItemStackToItemStackRecipe, InputRecipeCache.SingleItem<ItemStackToItemStackRecipe>> getRecipeType() {
         return switch (type) {
             case CNC_LATHING -> MoreMachineRecipeType.LATHING;
-            case CNC_ROLLING_MILL -> MoreMachineRecipeType.ROLLING_MILL;
-            default -> throw new IllegalStateException("Unexpected more machine factory type: " + type);
+            // TODO: Make it so that it throws an error if it is not one of the three types
+            default -> MoreMachineRecipeType.ROLLING_MILL;
         };
     }
 
     @Override
     public IRecipeViewerRecipeType<ItemStackToItemStackRecipe> recipeViewerType() {
         return switch (type) {
-            case CNC_LATHING -> MoreMachineRecipeViewerRecipeType.LATHE;
-            case CNC_ROLLING_MILL -> MoreMachineRecipeViewerRecipeType.ROLLING_MILL;
-            default -> throw new IllegalStateException("Unexpected more machine factory type: " + type);
+            case CNC_LATHING -> MMRecipeViewerRecipeType.LATHE;
+            // TODO: Make it so that it throws an error if it is not one of the three types
+            default -> MMRecipeViewerRecipeType.ROLLING_MILL;
         };
     }
 
@@ -101,7 +105,7 @@ public class TileEntityExtraMoreMachineItemStackToItemStackFactory extends TileE
     @NotNull
     @Override
     public CachedRecipe<ItemStackToItemStackRecipe> createNewCachedRecipe(@NotNull ItemStackToItemStackRecipe recipe, int cacheIndex) {
-        return OneInputCachedRecipe.itemToItem(recipe, recheckAllRecipeErrors[cacheIndex], inputHandlers[cacheIndex], outputHandlers[cacheIndex])
+        return new OneInputCachedRecipe<>(recipe, recheckAllRecipeErrors[cacheIndex], inputHandlers[cacheIndex], outputHandlers[cacheIndex])
                 .setErrorsChanged(errors -> errorTracker.onErrorsChanged(errors, cacheIndex))
                 .setCanHolderFunction(this::canFunction)
                 .setActive(active -> setActiveState(active, cacheIndex))
@@ -109,12 +113,12 @@ public class TileEntityExtraMoreMachineItemStackToItemStackFactory extends TileE
                 .setRequiredTicks(this::getTicksRequired)
                 .setOnFinish(this::markForSave)
                 .setOperatingTicksChanged(operatingTicks -> progress[cacheIndex] = operatingTicks)
-                .setBaselineMaxOperations(this::getOperationsPerTick);
+                .setBaselineMaxOperations(() -> upgradeMaxOperations);
     }
 
     @NotNull
     @Override
-    public MachineUpgradeData getUpgradeData(HolderLookup.Provider provider) {
-        return new MachineUpgradeData(provider, redstone, getControlType(), getEnergyContainer(), progress, energySlot, inputSlots, outputSlots, isSorting(), getComponents());
+    public MachineUpgradeData getUpgradeData(Provider provider) {
+        return new MachineUpgradeData(provider, redstone, getControlType(), energyContainer, progress, energySlot, inputSlots, outputSlots, isSorting(), getComponents(), problemPath());
     }
 }

@@ -26,7 +26,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = TileEntityDigitalMiner.class, remap = false)
-public abstract class MixinTileEntityDigitalMiner extends TileEntityMekanism implements IChunkLoader, IBoundingBlock, ITileFilterHolder<MinerFilter<?>>, IHasVisualization, IMixinMachineEnergyContainer {
+public abstract class MixinTileEntityDigitalMiner extends TileEntityMekanism implements IChunkLoader, IBoundingBlock, ITileFilterHolder<MinerFilter<?>>, IHasVisualization {
 
     @Shadow
     private int delayLength;
@@ -36,15 +36,15 @@ public abstract class MixinTileEntityDigitalMiner extends TileEntityMekanism imp
     }
 
     @Shadow
-    public abstract MinerEnergyContainer getEnergyContainer();
+    public abstract MinerEnergyContainer energyContainer();
 
     @Inject(method = "getDelay", at = @At(value = "RETURN"), cancellable = true)
     public void getDelay(CallbackInfoReturnable<Integer> cir) {
-        cir.setReturnValue(upgradeComponent.isUpgradeInstalled(ExtraUpgrade.CREATIVE) ? 0 : delayLength);
+        cir.setReturnValue((getUpgrades(ExtraUpgrade.CREATIVE) > 0) ? 0 : delayLength);
     }
 
     @Inject(method = "recalculateUpgrades", at = @At(value = "HEAD"))
     public void recalculateUpgrades(Upgrade upgrade, CallbackInfo ci) {
-        ((IMixinMachineEnergyContainer) getEnergyContainer()).mekanism_Extras$extraRecalculateUpgrades(upgrade);
+        ((IMixinMachineEnergyContainer) energyContainer()).mekanism_Extras$extraRecalculateUpgrades(upgrade);
     }
 }

@@ -1,12 +1,8 @@
 {
   "type": "minecraft:crafting_shaped",
   "key": {
-    "#": {
-      "item": "mekanism_extras:reinforced_induction_casing"
-    },
-    "C": {
-      "tag": "c:circuits/elite"
-    }
+    "#": "mekanism_extras:reinforced_induction_casing",
+    "C": "#c:circuits/elite"
   },
   "pattern": [
     " # ",

@@ -17,7 +17,7 @@ import mekanism.generators.common.GeneratorsLang;
 import mekanism.generators.common.MekanismGenerators;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public class GuiNaquadahReactorTab extends GuiTabElementType<TileEntityNaquadahReactorController, GuiNaquadahReactorTab.NaquadahReactorTab> {
 
@@ -34,10 +34,10 @@ public class GuiNaquadahReactorTab extends GuiTabElementType<TileEntityNaquadahR
         private final ExtraPacketTileButtonPress.ClickedTileButton button;
         private final ColorAtlas.ColorRegistryObject colorRO;
         private final ILangEntry description;
-        private final ResourceLocation path;
+        private final Identifier path;
         private final int yPos;
 
-        NaquadahReactorTab(ResourceLocation path, ILangEntry description, int y, ExtraPacketTileButtonPress.ClickedTileButton button, ColorAtlas.ColorRegistryObject colorRO) {
+        NaquadahReactorTab(Identifier path, ILangEntry description, int y, ExtraPacketTileButtonPress.ClickedTileButton button, ColorAtlas.ColorRegistryObject colorRO) {
             this.path = path;
             this.description = description;
             this.yPos = y;
@@ -46,7 +46,7 @@ public class GuiNaquadahReactorTab extends GuiTabElementType<TileEntityNaquadahR
         }
 
         @Override
-        public ResourceLocation getResource() {
+        public Identifier getResource() {
             return path;
         }
 

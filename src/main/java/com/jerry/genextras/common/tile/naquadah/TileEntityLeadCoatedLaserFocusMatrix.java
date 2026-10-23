@@ -1,14 +1,16 @@
 package com.jerry.genextras.common.tile.naquadah;
 
+import mekanism.api.lasers.ILaserReceptor;
+import mekanism.common.lib.transaction.TransactionHelper;
 import com.jerry.genextras.common.content.naquadah.NaquadahReactorMultiblockData;
 import com.jerry.genextras.common.registries.GenExtraBlocks;
-
-import mekanism.api.lasers.ILaserReceptor;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 
 public class TileEntityLeadCoatedLaserFocusMatrix extends TileEntityNaquadahReactorCasing implements ILaserReceptor {
 
@@ -17,23 +19,29 @@ public class TileEntityLeadCoatedLaserFocusMatrix extends TileEntityNaquadahReac
     }
 
     @Override
-    public void receiveLaserEnergy(long energy) {
+    public int receiveLaserEnergy(int energy, TransactionContext transaction) {
         NaquadahReactorMultiblockData multiblock = getMultiblock();
         if (multiblock.isFormed()) {
-            multiblock.addTemperatureFromEnergyInput(energy);
+            multiblock.addTemperatureFromEnergyInput(energy, transaction);
+            return energy;
         }
+        return 0;
     }
 
     @Override
-    public InteractionResult onRightClick(Player player) {
-        if (!isRemote() && player.isCreative()) {
+    public InteractionResult onRightClick(Level level, Player player) {
+        if (!level.isClientSide() && player.isCreative()) {
             NaquadahReactorMultiblockData multiblock = getMultiblock();
             if (multiblock.isFormed()) {
-                multiblock.setPlasmaTemp(1_000_000_000);
-                return InteractionResult.sidedSuccess(isRemote());
+                try (Transaction transaction = TransactionHelper.openTransactionSafe()) {
+                    multiblock.setPlasmaTemp(10 * NaquadahReactorMultiblockData.BURN_TEMPERATURE, transaction);
+                    transaction.commit();
+                }
+                return InteractionResult.SUCCESS_SERVER;
             }
         }
-        return super.onRightClick(player);
+        //TODO - 26.1: Don't call super on the client side if it was successful?
+        return super.onRightClick(level, player);
     }
 
     @Override

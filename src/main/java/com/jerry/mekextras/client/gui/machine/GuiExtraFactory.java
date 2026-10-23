@@ -17,7 +17,7 @@ import mekanism.common.inventory.container.tile.MekanismTileContainer;
 import mekanism.common.inventory.warning.WarningTracker.WarningType;
 import mekanism.common.tile.interfaces.IHasDumpButton;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 
@@ -30,18 +30,18 @@ public class GuiExtraFactory extends GuiConfigurableTile<TileEntityExtraFactory<
     private GuiDumpButton<?> dumpButton;
 
     public GuiExtraFactory(MekanismTileContainer<TileEntityExtraFactory<?>> container, Inventory inv, Component title) {
-        super(container, inv, title);
+        super(container, inv, title, DEFAULT_IMAGE_WIDTH + 36 * (container.getTileEntity().tier.ordinal() + 2) + 2 * container.getTileEntity().tier.ordinal(), DEFAULT_IMAGE_HEIGHT + (container.getTileEntity().hasSecondaryResourceBar() ? 11 : container.getTileEntity() instanceof TileEntityExtraSawingFactory ? 21 : 0));
         if (tile.hasSecondaryResourceBar()) {
-            imageHeight += 11;
+
             inventoryLabelY = 85;
         } else if (tile instanceof TileEntityExtraSawingFactory) {
-            imageHeight += 21;
+
             inventoryLabelY = 95;
         } else {
             inventoryLabelY = 75;
         }
         int index = tile.tier.ordinal();
-        imageWidth += (36 * (index + 2)) + (2 * index);
+
         inventoryLabelX = (22 * (index + 2)) - (3 * index);
         titleLabelY = 4;
         dynamicSlots = true;
@@ -51,13 +51,13 @@ public class GuiExtraFactory extends GuiConfigurableTile<TileEntityExtraFactory<
     protected void addGuiElements() {
         super.addGuiElements();
         addRenderableWidget(new ExtraGuiSortingTab(this, tile));
-        addRenderableWidget(new GuiVerticalPowerBar(this, tile.getEnergyContainer(), imageWidth - 12, 16, tile instanceof TileEntityExtraSawingFactory ? 73 : 52))
+        addRenderableWidget(new GuiVerticalPowerBar(this, tile.energyContainer(), imageWidth - 12, 16, tile instanceof TileEntityExtraSawingFactory ? 73 : 52))
                 .warning(WarningType.NOT_ENOUGH_ENERGY, tile.getWarningCheck(RecipeError.NOT_ENOUGH_ENERGY, 0));
-        addRenderableWidget(new GuiEnergyTab(this, tile.getEnergyContainer(), tile::getLastUsage));
+        addRenderableWidget(new GuiEnergyTab(this, tile.energyContainer(), tile::getLastUsage));
         if (tile.hasSecondaryResourceBar()) {
             if (tile instanceof TileEntityExtraItemStackChemicalToItemStackFactory factory) {
                 int index = tile.tier.ordinal();
-                addRenderableWidget(new GuiChemicalBar(this, GuiChemicalBar.getProvider(factory.getChemicalTank(), tile.getChemicalTanks(null)), 7, 76,
+                addRenderableWidget(new GuiChemicalBar(this, GuiChemicalBar.getProvider(factory.getChemicalTank(), tile.getChemicalTanks()), 7, 76,
                         210 + 38 * index, 4, true))
                         .warning(WarningType.NO_MATCHING_RECIPE, tile.getWarningCheck(RecipeError.NOT_ENOUGH_SECONDARY_INPUT, 0));
                 dumpButton = addRenderableWidget(new GuiDumpButton<>(this, (TileEntityExtraFactory<?> & IHasDumpButton) tile,
@@ -77,7 +77,7 @@ public class GuiExtraFactory extends GuiConfigurableTile<TileEntityExtraFactory<
     }
 
     @Override
-    protected void drawForegroundText(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY) {
+    protected void drawForegroundText(@NotNull GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
         renderTitleText(guiGraphics);
         renderInventoryText(guiGraphics, dumpButton == null ? getXSize() : dumpButton.getRelativeX());
         super.drawForegroundText(guiGraphics, mouseX, mouseY);

@@ -13,7 +13,7 @@
     },
     "facing=west,active=false": {
       "model": "mekanism_extras:block/factory/stamping/cosmic",
-      "y": -90
+      "y": 270
     },
     "facing=north,active=true": {
       "model": "mekanism_extras:block/factory/stamping/active/cosmic"
@@ -28,7 +28,7 @@
     },
     "facing=west,active=true": {
       "model": "mekanism_extras:block/factory/stamping/active/cosmic",
-      "y": -90
+      "y": 270
     }
   }
 }

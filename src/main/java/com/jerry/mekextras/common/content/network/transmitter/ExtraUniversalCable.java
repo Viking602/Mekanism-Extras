@@ -1,104 +1,56 @@
 package com.jerry.mekextras.common.content.network.transmitter;
-
 import com.jerry.mekextras.common.tier.transmitter.CTier;
 import com.jerry.mekextras.common.tile.transmitter.TileEntityExtraTransmitter;
 import com.jerry.mekextras.common.util.IExtraUpgradeableTransmitter;
-
-import mekanism.api.Action;
 import mekanism.api.AutomationType;
-import mekanism.api.SerializationConstants;
-import mekanism.api.energy.IMekanismStrictEnergyHandler;
-import mekanism.api.energy.IStrictEnergyHandler;
-import mekanism.common.content.network.EnergyNetwork;
+import mekanism.api.energy.IEnergyContainer;
 import mekanism.common.content.network.transmitter.UniversalCable;
 import mekanism.common.lib.transmitter.ConnectionType;
-import mekanism.common.lib.transmitter.acceptor.EnergyAcceptorCache;
-import mekanism.common.upgrade.transmitter.TransmitterUpgradeData;
+import mekanism.common.lib.transmitter.acceptor.AcceptorCache;
 import mekanism.common.upgrade.transmitter.UniversalCableUpgradeData;
 import mekanism.common.util.EnumUtils;
-import mekanism.common.util.NBTUtils;
-
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
-
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-public class ExtraUniversalCable extends UniversalCable implements IMekanismStrictEnergyHandler,
-                                 IExtraUpgradeableTransmitter<UniversalCableUpgradeData> {
-
-    public ExtraUniversalCable(Holder<Block> blockProvider, TileEntityExtraTransmitter tile) {
-        super(blockProvider, tile);
-    }
-
+import net.neoforged.neoforge.transfer.energy.EnergyHandler;
+import net.neoforged.neoforge.transfer.energy.EnergyHandlerUtil;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
+public class ExtraUniversalCable extends UniversalCable implements IExtraUpgradeableTransmitter<UniversalCableUpgradeData> {
+    public ExtraUniversalCable(Holder<Block> blockProvider, TileEntityExtraTransmitter tile) { super(blockProvider, tile); }
+    @Override public long getCapacity() { return CTier.getCapacityAsLong(tier); }
+    public long getCapacityAsFloatingLong() { return getCapacity(); }
     @Override
-    public void pullFromAcceptors() {
+    public void pullFromAcceptors(ServerLevel level) {
         if (!hasPullSide || getAvailablePull() <= 0) {
             return;
         }
-        EnergyAcceptorCache acceptorCache = getAcceptorCache();
+        IEnergyContainer buffer = getContainer();
+        AcceptorCache<EnergyHandler> acceptorCache = getAcceptorCache();
         for (Direction side : EnumUtils.DIRECTIONS) {
             if (!isConnectionType(side, ConnectionType.PULL)) {
                 continue;
             }
-            IStrictEnergyHandler connectedAcceptor = acceptorCache.getConnectedAcceptor(side);
+            EnergyHandler connectedAcceptor = acceptorCache.getConnectedAcceptor(side);
             if (connectedAcceptor != null) {
-                long received = connectedAcceptor.extractEnergy(getAvailablePull(), Action.SIMULATE);
-                if (received > 0L && takeEnergy(received, Action.SIMULATE) == 0L) {
-                    // If we received some energy and are able to insert it all
-                    long remainder = takeEnergy(received, Action.EXECUTE);
-                    connectedAcceptor.extractEnergy(received - remainder, Action.EXECUTE);
+                try (Transaction transaction = Transaction.openRoot()) {
+                    int extracted = connectedAcceptor.extract(getAvailablePull(), transaction);
+                    if (extracted > 0 && buffer.insert(extracted, transaction, AutomationType.INTERNAL) == extracted) {
+                        //If we received some resource and are able to insert it all, then actually extract it and insert it into our thing.
+                        // Note: We extract first after simulating ourselves because if the target gave a faulty simulation value, we want to handle it properly
+                        // and not accidentally dupe anything, and we know our simulation we just performed on taking it is valid
+                        transaction.commit();
+                        if (EnergyHandlerUtil.isFull(buffer)) {
+                            break;
+                        }
+                    }
                 }
             }
         }
     }
 
-    private long getAvailablePull() {
-        if (hasTransmitterNetwork()) {
-            return Math.min(getCapacity(), getTransmitterNetwork().energyContainer.getNeeded());
-        }
-        return Math.min(getCapacity(), buffer.getNeeded());
+    private int getAvailablePull() {
+        return Math.min(com.google.common.primitives.Ints.saturatedCast(getCapacity()), getContainer().getNeededAsInt());
     }
 
-    @NotNull
-    public long getCapacityAsFloatingLong() {
-        return CTier.getCapacityAsLong(tier);
-    }
-
-    @Override
-    public long getCapacity() {
-        return CTier.getCapacityAsLong(tier);
-    }
-
-    private long takeEnergy(long amount, Action action) {
-        if (hasTransmitterNetwork()) {
-            return getTransmitterNetwork().energyContainer.insert(amount, action, AutomationType.INTERNAL);
-        }
-        return buffer.insert(amount, action, AutomationType.INTERNAL);
-    }
-
-    @Override
-    protected void handleContentsUpdateTag(@NotNull EnergyNetwork network, @NotNull CompoundTag tag, @NotNull HolderLookup.Provider provider) {
-        super.handleContentsUpdateTag(network, tag, provider);
-        NBTUtils.setLegacyEnergyIfPresent(tag, SerializationConstants.ENERGY, network.energyContainer::setEnergy);
-        NBTUtils.setFloatIfPresent(tag, SerializationConstants.SCALE, scale -> network.currentScale = scale);
-    }
-
-    @Override
-    public @Nullable UniversalCableUpgradeData getUpgradeData() {
-        return super.getUpgradeData();
-    }
-
-    @Override
-    public boolean dataTypeMatches(@NotNull TransmitterUpgradeData data) {
-        return super.dataTypeMatches(data);
-    }
-
-    @Override
-    public void parseUpgradeData(@NotNull UniversalCableUpgradeData data) {
-        super.parseUpgradeData(data);
-    }
 }

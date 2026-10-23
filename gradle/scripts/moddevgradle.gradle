@@ -6,10 +6,6 @@ neoForge {
     // Specify Forge version
     version = libs.versions.neoForge.get()
 
-    parchment {
-        minecraftVersion = libs.versions.minecraft.get()
-        mappingsVersion = libs.versions.parchment.get()
-    }
 
     // This line is optional. Access Transformers are automatically detected
     accessTransformers {
@@ -34,19 +30,19 @@ neoForge {
     runs {
         client {
             client()
-            sourceSet = sourceSets.clientExtra
+            sourceSet = sourceSets.main
             ideName = "Client"
 
-            gameDirectory.set(file('run/Client'))
+            gameDirectory.set(file('../test-mekanismextras-client-20261011'))
             systemProperty('neoforge.enabledGameTestNamespaces', project.mod_id)
         }
 
         server {
             server()
-            sourceSet = sourceSets.extra
+            sourceSet = sourceSets.main
             ideName = "Server"
 
-            gameDirectory.set(file('run/server'))
+            gameDirectory.set(file('../test-mekanismextras-server-20261011'))
             programArguments.addAll('--nogui', '--world', 'world-extra')
             systemProperty('neoforge.enabledGameTestNamespaces', project.mod_id)
         }
@@ -61,11 +57,11 @@ neoForge {
         }
 
         data {
-            data()
+            clientData()
             sourceSet = sourceSets.main
             ideName = "Data Generation"
 
-            gameDirectory.set(file('run/data'))
+            gameDirectory.set(file('../test-mekanismextras-data-20261011'))
             programArguments.addAll('--mod', project.mod_id)
             programArguments.addAll('--all')
             programArguments.addAll('--output', file('src/generated/resources/').getAbsolutePath())

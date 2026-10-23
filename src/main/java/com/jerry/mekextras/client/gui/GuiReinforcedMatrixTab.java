@@ -14,7 +14,7 @@ import mekanism.common.network.PacketUtils;
 import mekanism.common.util.MekanismUtils;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public class GuiReinforcedMatrixTab extends GuiTabElementType<TileEntityReinforcedInductionCasing, GuiReinforcedMatrixTab.ReinforcedMatrixTab> {
 
@@ -40,7 +40,7 @@ public class GuiReinforcedMatrixTab extends GuiTabElementType<TileEntityReinforc
         }
 
         @Override
-        public ResourceLocation getResource() {
+        public Identifier getResource() {
             return MekanismUtils.getResource(MekanismUtils.ResourceType.GUI, path);
         }
 

@@ -1,15 +1,9 @@
 {
   "type": "mekanism:mek_data",
   "key": {
-    "A": {
-      "tag": "mekanism_extras:alloys/radiance"
-    },
-    "O": {
-      "tag": "c:ingots/osmium"
-    },
-    "P": {
-      "item": "mekanism:ultimate_chemical_tank"
-    }
+    "A": "#mekanism_extras:alloys/radiance",
+    "O": "#c:ingots/osmium",
+    "P": "mekanism:ultimate_chemical_tank"
   },
   "pattern": [
     "AOA",

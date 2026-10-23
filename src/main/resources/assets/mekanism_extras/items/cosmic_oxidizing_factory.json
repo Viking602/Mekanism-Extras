@@ -1,0 +1,15 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "mekanism_extras:item/cosmic_oxidizing_factory",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": -1
+      },
+      {
+        "type": "mekanism_extras:tier"
+      }
+    ]
+  }
+}

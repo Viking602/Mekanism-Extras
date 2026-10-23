@@ -30,7 +30,7 @@ public class ItemBlockExtraThermodynamicConductor extends ItemBlockTooltip<Block
     @NotNull
     @Override
     public ConductorTier getTier() {
-        return Objects.requireNonNull(Attribute.getTier(getBlock(), ConductorTier.class));
+        return Objects.requireNonNull(Attribute.getTierNN(getBlock(), ConductorTier.class));
     }
 
     public @NotNull Component getName(@NotNull ItemStack stack) {
@@ -38,18 +38,18 @@ public class ItemBlockExtraThermodynamicConductor extends ItemBlockTooltip<Block
     }
 
     @Override
-    protected void addDetails(@NotNull ItemStack stack, @NotNull TooltipContext context, @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
-        super.addDetails(stack, context, tooltip, flag);
-        tooltip.add(MekanismLang.CAPABLE_OF_TRANSFERRING.translateColored(EnumColor.DARK_GRAY));
-        tooltip.add(MekanismLang.HEAT.translateColored(EnumColor.PURPLE, MekanismLang.MEKANISM));
+    protected void addDetails(@NotNull ItemStack stack, net.neoforged.neoforge.transfer.access.ItemAccess itemAccess, @NotNull TooltipContext context, net.minecraft.world.item.component.TooltipDisplay tooltipDisplay, java.util.function.Consumer<Component> tooltip, @NotNull TooltipFlag flag) {
+        super.addDetails(stack, itemAccess, context, tooltipDisplay, tooltip, flag);
+        tooltip.accept(MekanismLang.CAPABLE_OF_TRANSFERRING.translateColored(EnumColor.DARK_GRAY));
+        tooltip.accept(MekanismLang.HEAT.translateColored(EnumColor.PURPLE, MekanismLang.MEKANISM));
     }
 
     @Override
-    protected void addStats(@NotNull ItemStack stack, @NotNull TooltipContext context, @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
-        super.addStats(stack, context, tooltip, flag);
+    protected void addStats(@NotNull ItemStack stack, net.neoforged.neoforge.transfer.access.ItemAccess itemAccess, @NotNull TooltipContext context, net.minecraft.world.item.component.TooltipDisplay tooltipDisplay, java.util.function.Consumer<Component> tooltip, @NotNull TooltipFlag flag) {
+        super.addStats(stack, itemAccess, context, tooltipDisplay, tooltip, flag);
         ConductorTier tier = getTier();
-        tooltip.add(MekanismLang.CONDUCTION.translateColored(EnumColor.INDIGO, EnumColor.GRAY, TCTier.getConduction(tier)));
-        tooltip.add(MekanismLang.INSULATION.translateColored(EnumColor.INDIGO, EnumColor.GRAY, TCTier.getConductionInsulation(tier)));
-        tooltip.add(MekanismLang.HEAT_CAPACITY.translateColored(EnumColor.INDIGO, EnumColor.GRAY, TCTier.getHeatCapacity(tier)));
+        tooltip.accept(MekanismLang.CONDUCTION.translateColored(EnumColor.INDIGO, EnumColor.GRAY, TCTier.getConduction(tier)));
+        tooltip.accept(MekanismLang.INSULATION.translateColored(EnumColor.INDIGO, EnumColor.GRAY, TCTier.getConductionInsulation(tier)));
+        tooltip.accept(MekanismLang.HEAT_CAPACITY.translateColored(EnumColor.INDIGO, EnumColor.GRAY, TCTier.getHeatCapacity(tier)));
     }
 }

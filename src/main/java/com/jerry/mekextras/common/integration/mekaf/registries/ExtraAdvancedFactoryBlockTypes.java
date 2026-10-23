@@ -34,7 +34,7 @@ public class ExtraAdvancedFactoryBlockTypes {
             .createExtraAdvancedFactoryMachine(() -> MekanismTileEntityTypes.CHEMICAL_OXIDIZER, MekanismLang.DESCRIPTION_CHEMICAL_OXIDIZER, AdvancedFactoryType.OXIDIZING)
             .withGui(() -> MekanismContainerTypes.CHEMICAL_OXIDIZER)
             .withSound(MekanismSounds.CHEMICAL_OXIDIZER)
-            .withEnergyConfig(MekanismConfig.usage.chemicalOxidizer, MekanismConfig.storage.chemicalOxidizer)
+            .withEnergyUsage(MekanismConfig.usage.chemicalOxidizer)
             .with(ExtraAttributeUpgradeSupport.EXTRA_MACHINE_UPGRADES)
             .build();
 
@@ -43,7 +43,7 @@ public class ExtraAdvancedFactoryBlockTypes {
             .createExtraAdvancedFactoryMachine(() -> MekanismTileEntityTypes.CHEMICAL_DISSOLUTION_CHAMBER, MekanismLang.DESCRIPTION_CHEMICAL_DISSOLUTION_CHAMBER, AdvancedFactoryType.DISSOLVING)
             .withGui(() -> MekanismContainerTypes.CHEMICAL_DISSOLUTION_CHAMBER)
             .withSound(MekanismSounds.CHEMICAL_DISSOLUTION_CHAMBER)
-            .withEnergyConfig(MekanismConfig.usage.chemicalDissolutionChamber, MekanismConfig.storage.chemicalDissolutionChamber)
+            .withEnergyUsage(MekanismConfig.usage.chemicalDissolutionChamber)
             .with(ExtraAttributeUpgradeSupport.EXTRA_ADVANCED_MACHINE_UPGRADES)
             .build();
 
@@ -52,7 +52,7 @@ public class ExtraAdvancedFactoryBlockTypes {
             .createExtraAdvancedFactoryMachine(() -> MekanismTileEntityTypes.CHEMICAL_WASHER, MekanismLang.DESCRIPTION_CHEMICAL_WASHER, AdvancedFactoryType.WASHING)
             .withGui(() -> MekanismContainerTypes.CHEMICAL_WASHER)
             .withSound(MekanismSounds.CHEMICAL_WASHER)
-            .withEnergyConfig(MekanismConfig.usage.chemicalWasher, MekanismConfig.storage.chemicalWasher)
+            .withEnergyUsage(MekanismConfig.usage.chemicalWasher)
             .with(ExtraAttributeUpgradeSupport.EXTRA_MACHINE_NO_STACK_UPGRADES)
             .build();
 
@@ -61,7 +61,7 @@ public class ExtraAdvancedFactoryBlockTypes {
             .createExtraAdvancedFactoryMachine(() -> MekanismTileEntityTypes.PRESSURIZED_REACTION_CHAMBER, MekanismLang.DESCRIPTION_PRESSURIZED_REACTION_CHAMBER, AdvancedFactoryType.PRESSURISED_REACTING)
             .withGui(() -> MekanismContainerTypes.PRESSURIZED_REACTION_CHAMBER)
             .withSound(MekanismSounds.PRESSURIZED_REACTION_CHAMBER)
-            .withEnergyConfig(MekanismConfig.usage.pressurizedReactionBase, MekanismConfig.storage.pressurizedReactionBase)
+            .withEnergyUsage(MekanismConfig.usage.pressurizedReactionBase)
             .with(ExtraAttributeUpgradeSupport.EXTRA_MACHINE_UPGRADES)
             .build();
 
@@ -70,7 +70,7 @@ public class ExtraAdvancedFactoryBlockTypes {
             .createExtraAdvancedFactoryMachine(() -> MekanismTileEntityTypes.CHEMICAL_CRYSTALLIZER, MekanismLang.DESCRIPTION_CHEMICAL_CRYSTALLIZER, AdvancedFactoryType.CRYSTALLIZING)
             .withGui(() -> MekanismContainerTypes.CHEMICAL_CRYSTALLIZER)
             .withSound(MekanismSounds.CHEMICAL_CRYSTALLIZER)
-            .withEnergyConfig(MekanismConfig.usage.chemicalCrystallizer, MekanismConfig.storage.chemicalCrystallizer)
+            .withEnergyUsage(MekanismConfig.usage.chemicalCrystallizer)
             .with(ExtraAttributeUpgradeSupport.EXTRA_MACHINE_UPGRADES)
             .build();
 
@@ -78,7 +78,7 @@ public class ExtraAdvancedFactoryBlockTypes {
     public static final ExtraFactoryMachine<TileEntityIsotopicCentrifuge> ISOTOPIC_CENTRIFUGE = ExtraMachineBuilder
             .createExtraAdvancedFactoryMachine(() -> MekanismTileEntityTypes.ISOTOPIC_CENTRIFUGE, MekanismLang.DESCRIPTION_ISOTOPIC_CENTRIFUGE, AdvancedFactoryType.CENTRIFUGING)
             .withGui(() -> MekanismContainerTypes.ISOTOPIC_CENTRIFUGE)
-            .withEnergyConfig(MekanismConfig.usage.isotopicCentrifuge, MekanismConfig.storage.isotopicCentrifuge)
+            .withEnergyUsage(MekanismConfig.usage.isotopicCentrifuge)
             .with(ExtraAttributeUpgradeSupport.EXTRA_MACHINE_NO_STACK_UPGRADES)
             .withSound(MekanismSounds.ISOTOPIC_CENTRIFUGE)
             .with(AttributeHasBounding.ABOVE_ONLY)
@@ -88,7 +88,7 @@ public class ExtraAdvancedFactoryBlockTypes {
     public static final ExtraFactoryMachine<TileEntityNutritionalLiquifier> NUTRITIONAL_LIQUIFIER = ExtraMachineBuilder
             .createExtraAdvancedFactoryMachine(() -> MekanismTileEntityTypes.NUTRITIONAL_LIQUIFIER, MekanismLang.DESCRIPTION_NUTRITIONAL_LIQUIFIER, AdvancedFactoryType.LIQUIFYING)
             .withGui(() -> MekanismContainerTypes.NUTRITIONAL_LIQUIFIER)
-            .withEnergyConfig(MekanismConfig.usage.nutritionalLiquifier, MekanismConfig.storage.nutritionalLiquifier)
+            .withEnergyUsage(MekanismConfig.usage.nutritionalLiquifier)
             .with(ExtraAttributeUpgradeSupport.EXTRA_MACHINE_UPGRADES)
             .withSound(MekanismSounds.NUTRITIONAL_LIQUIFIER)
             .build();
@@ -98,7 +98,7 @@ public class ExtraAdvancedFactoryBlockTypes {
             .createExtraAdvancedFactoryMachine(() -> MekanismTileEntityTypes.PIGMENT_EXTRACTOR, MekanismLang.DESCRIPTION_PIGMENT_EXTRACTOR, AdvancedFactoryType.PIGMENT_EXTRACTING)
             .withGui(() -> MekanismContainerTypes.PIGMENT_EXTRACTOR)
             .withSound(MekanismSounds.PIGMENT_EXTRACTOR)
-            .withEnergyConfig(MekanismConfig.usage.pigmentExtractor, MekanismConfig.storage.pigmentExtractor)
+            .withEnergyUsage(MekanismConfig.usage.pigmentExtractor)
             .with(AttributeUpgradeSupport.DEFAULT_MACHINE_UPGRADES)
             .with(AttributeSideConfig.ADVANCED_ELECTRIC_MACHINE)
             .withComputerSupport("pigmentExtractor")
@@ -109,7 +109,7 @@ public class ExtraAdvancedFactoryBlockTypes {
             .createExtraAdvancedFactoryMachine(() -> MekanismTileEntityTypes.PAINTING_MACHINE, MekanismLang.DESCRIPTION_PAINTING_MACHINE, AdvancedFactoryType.PAINTING)
             .withGui(() -> MekanismContainerTypes.PAINTING_MACHINE)
             .withSound(MekanismSounds.PAINTING_MACHINE)
-            .withEnergyConfig(MekanismConfig.usage.paintingMachine, MekanismConfig.storage.paintingMachine)
+            .withEnergyUsage(MekanismConfig.usage.paintingMachine)
             .with(AttributeUpgradeSupport.DEFAULT_MACHINE_UPGRADES)
             .with(AttributeSideConfig.ADVANCED_ELECTRIC_MACHINE)
             .withComputerSupport("paintingMachine")

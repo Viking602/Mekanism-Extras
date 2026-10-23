@@ -2,13 +2,13 @@ package com.jerry.mekextras.api.text;
 
 import com.jerry.mekextras.MekanismExtras;
 
-import mekanism.api.annotations.NothingNullByDefault;
+import org.jspecify.annotations.NullMarked;
 import mekanism.api.text.ILangEntry;
 
-import net.minecraft.Util;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Util;
+import net.minecraft.resources.Identifier;
 
-@NothingNullByDefault
+@NullMarked
 public enum APIExtraLang implements ILangEntry {
 
     // Upgrades
@@ -22,7 +22,7 @@ public enum APIExtraLang implements ILangEntry {
     private final String key;
 
     APIExtraLang(String type, String path) {
-        this(Util.makeDescriptionId(type, ResourceLocation.fromNamespaceAndPath(MekanismExtras.MOD_ID, path)));
+        this(Util.makeDescriptionId(type, Identifier.fromNamespaceAndPath(MekanismExtras.MOD_ID, path)));
     }
 
     APIExtraLang(String key) {

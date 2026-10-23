@@ -3,12 +3,12 @@ package com.jerry.mekextras.common.tier;
 import com.jerry.mekextras.api.tier.AdvancedTier;
 import com.jerry.mekextras.api.tier.IAdvancedTier;
 
-import mekanism.api.annotations.NothingNullByDefault;
+import org.jspecify.annotations.NullMarked;
 import mekanism.common.config.value.CachedLongValue;
 
 import org.jetbrains.annotations.Nullable;
 
-@NothingNullByDefault
+@NullMarked
 public enum ICTier implements IAdvancedTier {
 
     ABSOLUTE(AdvancedTier.ABSOLUTE, 32_768_000_000_000L),

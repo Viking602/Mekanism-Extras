@@ -8,7 +8,7 @@
   "type": "mekanism:rotary",
   "fluid_input": {
     "amount": 1,
-    "fluid": "mekanism_extras:polonium_containing_solution"
+    "ingredient": "mekanism_extras:polonium_containing_solution"
   },
   "fluid_output": {
     "amount": 1,

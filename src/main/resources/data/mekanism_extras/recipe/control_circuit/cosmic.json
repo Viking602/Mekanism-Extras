@@ -1,12 +1,8 @@
 {
   "type": "minecraft:crafting_shaped",
   "key": {
-    "A": {
-      "tag": "mekanism_extras:alloys/shining"
-    },
-    "C": {
-      "tag": "c:circuits/supreme"
-    }
+    "A": "#mekanism_extras:alloys/shining",
+    "C": "#c:circuits/supreme"
   },
   "pattern": [
     "ACA"

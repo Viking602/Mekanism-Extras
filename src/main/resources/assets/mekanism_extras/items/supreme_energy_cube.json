@@ -1,0 +1,9 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "mekanism_extras:item/supreme_energy_cube",
+    "model": {
+      "type": "mekanism_extras:energy_cube"
+    }
+  }
+}

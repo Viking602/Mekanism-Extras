@@ -1,47 +1,37 @@
 package com.jerry.mekextras.client.model.energycube;
 
-import mekanism.api.RelativeSide;
-import mekanism.common.util.EnumUtils;
-
-import net.minecraft.client.renderer.block.model.BlockElement;
-import net.minecraft.util.GsonHelper;
-import net.neoforged.neoforge.client.model.geometry.IGeometryLoader;
-
 import com.google.gson.JsonDeserializationContext;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import org.jetbrains.annotations.NotNull;
+import com.jerry.mekextras.MekanismExtras;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
+import net.neoforged.neoforge.client.model.StandardModelParameters;
+import net.neoforged.neoforge.client.model.UnbakedModelLoader;
 
-import java.util.*;
-
-public class ExtraEnergyCubeModelLoader implements IGeometryLoader<ExtraEnergyCubeGeometry> {
-
+public class ExtraEnergyCubeModelLoader implements UnbakedModelLoader<ExtraEnergyCubeUnbakedModel>, ResourceManagerReloadListener {
     public static final ExtraEnergyCubeModelLoader INSTANCE = new ExtraEnergyCubeModelLoader();
+    public static final Identifier ID = MekanismExtras.rl("energy_cube");
 
     private ExtraEnergyCubeModelLoader() {}
 
     @Override
-    public @NotNull ExtraEnergyCubeGeometry read(@NotNull JsonObject jsonObject, @NotNull JsonDeserializationContext ctx) throws JsonParseException {
-        List<BlockElement> frame = readElements(jsonObject, ctx, "frame");
-        Map<RelativeSide, List<BlockElement>> leds = new EnumMap<>(RelativeSide.class);
-        Map<RelativeSide, List<BlockElement>> ports = new EnumMap<>(RelativeSide.class);
-        for (RelativeSide side : EnumUtils.SIDES) {
-            String name = side.name().toLowerCase(Locale.ROOT);
-            leds.put(side, readElements(jsonObject, ctx, name + "LEDs"));
-            ports.put(side, readElements(jsonObject, ctx, name + "Port"));
-        }
-        return new ExtraEnergyCubeGeometry(frame, leds, ports);
+    public void onResourceManagerReload(ResourceManager resourceManager) {
+        // Handle any cache clearing logic
     }
 
-    private List<BlockElement> readElements(JsonObject jsonObject, JsonDeserializationContext ctx, String key) {
-        List<BlockElement> elements = new ArrayList<>();
-        for (JsonElement element : GsonHelper.getAsJsonArray(jsonObject, key)) {
-            elements.add(ctx.deserialize(element, BlockElement.class));
-        }
-        if (elements.isEmpty()) {
-            throw new JsonParseException("Energy cube models requires a \"" + key + "\" element with at least one element.");
-        }
-        return elements;
+    @Override
+    public ExtraEnergyCubeUnbakedModel read(JsonObject obj, JsonDeserializationContext context) throws JsonParseException {
+        // Use the given JsonObject and, if needed, the JsonDeserializationContext to get properties from the model JSON.
+        // The MyUnbakedModel constructor may have constructor parameters (see below).
+
+        // Read the data used to create the quads
+        ExtraEnergyCubeGeometry geometry = ExtraEnergyCubeGeometry.parse(obj, context);
+
+        // For the basic parameters provided by vanilla and NeoForge, you can use the StandardModelParameters
+        StandardModelParameters params = StandardModelParameters.parse(obj, context);
+
+        return new ExtraEnergyCubeUnbakedModel(params, geometry);
     }
 }

@@ -1,48 +1,37 @@
 package com.jerry.mekextras.common.inventory.slot;
-
-import com.jerry.mekextras.common.tile.factory.TileEntityExtraFactory;
-
-import mekanism.api.IContentsListener;
-import mekanism.api.annotations.NothingNullByDefault;
-import mekanism.api.inventory.IInventorySlot;
 import mekanism.common.inventory.slot.InputInventorySlot;
-
-import net.minecraft.world.item.ItemStack;
-
-import org.jetbrains.annotations.Nullable;
+import net.neoforged.neoforge.transfer.item.ItemResource;
 
 import java.util.Objects;
+import mekanism.api.IContentsListener;
+import mekanism.api.inventory.IInventorySlot;
+import com.jerry.mekextras.common.tile.factory.TileEntityExtraFactory;
+import net.minecraft.world.item.Item;
+import org.jspecify.annotations.Nullable;
 
-@NothingNullByDefault
 public class ExtraFactoryInputInventorySlot extends InputInventorySlot {
-
     private final TileEntityExtraFactory<?> factory;
 
     public static ExtraFactoryInputInventorySlot create(TileEntityExtraFactory<?> factory, int process, IInventorySlot outputSlot, @Nullable IContentsListener listener,
-                                                        int x, int y) {
+          int x, int y) {
         return create(factory, process, outputSlot, null, listener, x, y);
     }
 
     public static ExtraFactoryInputInventorySlot create(TileEntityExtraFactory<?> factory, int process, IInventorySlot outputSlot, @Nullable IInventorySlot secondaryOutputSlot,
-                                                        @Nullable IContentsListener listener, int x, int y) {
+          @Nullable IContentsListener listener, int x, int y) {
         Objects.requireNonNull(factory, "Factory cannot be null");
         Objects.requireNonNull(outputSlot, "Primary output slot cannot be null");
         return new ExtraFactoryInputInventorySlot(factory, process, outputSlot, secondaryOutputSlot, listener, x, y);
     }
 
     private ExtraFactoryInputInventorySlot(TileEntityExtraFactory<?> factory, int process, IInventorySlot outputSlot, @Nullable IInventorySlot secondaryOutputSlot,
-                                           @Nullable IContentsListener listener, int x, int y) {
-        super(stack -> factory.isItemValidForSlot(stack) && factory.inputProducesOutput(process, stack, outputSlot, secondaryOutputSlot, false),
-                factory::isValidInputItem, listener, x, y);
+          @Nullable IContentsListener listener, int x, int y) {
+        super(Item.ABSOLUTE_MAX_STACK_SIZE, (itemType, _) -> factory.isItemValidForSlot(itemType) && factory.inputProducesOutput(process, itemType, outputSlot, secondaryOutputSlot, false),
+              factory::isValidInputItem, null, null, listener, x, y);
         this.factory = factory;
     }
-
     @Override
-    public int getLimit(ItemStack stack) {
-        try {
-            return Math.multiplyExact(super.getLimit(stack), 8 << factory.tier.ordinal());
-        } catch (ArithmeticException ignored) {
-            return Integer.MAX_VALUE;
-        }
+    public long capacityAsLong(ItemResource resource) {
+        return super.capacityAsLong(resource) * (8L << factory.tier.ordinal());
     }
 }

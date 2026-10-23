@@ -1,27 +1,26 @@
 package com.jerry.mekextras.api.recipes.cache;
 
-import com.jerry.mekextras.api.recipes.cache.StackableItemStackConstantChemicalToObjectCachedRecipe.StackableChemicalUsageMultiplier;
+import com.jerry.mekmm.api.recipes.PlantingRecipe;
 
-import mekanism.api.annotations.NothingNullByDefault;
+import mekanism.api.chemical.Chemical;
 import mekanism.api.chemical.ChemicalStack;
 import mekanism.api.functions.ConstantPredicates;
 import mekanism.api.recipes.SawmillRecipe.ChanceOutput;
 import mekanism.api.recipes.cache.CachedRecipe;
+import mekanism.api.recipes.cache.ItemStackConstantChemicalToObjectCachedRecipe.ChemicalUsageMultiplier;
 import mekanism.api.recipes.cache.TwoInputCachedRecipe;
 import mekanism.api.recipes.inputs.IInputHandler;
-import mekanism.api.recipes.inputs.ILongInputHandler;
 import mekanism.api.recipes.outputs.IOutputHandler;
 
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 
-import com.jerry.mekmm.api.recipes.PlantingRecipe;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NullMarked;
 
 import java.util.Objects;
-import java.util.function.BooleanSupplier;
-import java.util.function.LongConsumer;
-import java.util.function.Predicate;
+import java.util.function.*;
 
 /**
  * Base class to help implement handling of item chemical to object recipes. Unlike
@@ -30,17 +29,17 @@ import java.util.function.Predicate;
  *
  * @since 10.7.0
  */
-@NothingNullByDefault
+@NullMarked
 public class StackablePlantingCachedRecipe extends CachedRecipe<PlantingRecipe> {
 
     protected final Predicate<ChanceOutput> outputEmptyCheck;
-    protected final IOutputHandler<@NotNull ChanceOutput> outputHandler;
-    protected final IInputHandler<@NotNull ItemStack> itemInputHandler;
-    protected final ILongInputHandler<ChemicalStack> chemicalInputHandler;
-    protected final StackableChemicalUsageMultiplier chemicalUsage;
-    protected final LongConsumer chemicalUsedSoFarChanged;
-    protected long chemicalUsageMultiplier;
-    protected long chemicalUsedSoFar;
+    protected final IOutputHandler<ChanceOutput> outputHandler;
+    protected final IInputHandler<Item, ItemStack> itemInputHandler;
+    protected final IInputHandler<Chemical, ChemicalStack> chemicalInputHandler;
+    protected final ChemicalUsageMultiplier chemicalUsage;
+    protected final IntConsumer chemicalUsedSoFarChanged;
+    protected int chemicalUsageMultiplier;
+    protected int chemicalUsedSoFar;
     private int operationsSoFar = 1;
 
     protected ItemStack recipeItem = ItemStack.EMPTY;
@@ -62,9 +61,9 @@ public class StackablePlantingCachedRecipe extends CachedRecipe<PlantingRecipe> 
      * @param chemicalUsedSoFarChanged Called when the number chemical usage so far changes.
      * @param outputHandler            Output handler.
      */
-    public StackablePlantingCachedRecipe(PlantingRecipe recipe, BooleanSupplier recheckAllErrors, IInputHandler<@NotNull ItemStack> itemInputHandler,
-                                         ILongInputHandler<ChemicalStack> chemicalInputHandler, StackableChemicalUsageMultiplier chemicalUsage, LongConsumer chemicalUsedSoFarChanged,
-                                         IOutputHandler<@NotNull ChanceOutput> outputHandler, Predicate<ChanceOutput> outputEmptyCheck) {
+    public StackablePlantingCachedRecipe(PlantingRecipe recipe, BooleanSupplier recheckAllErrors, IInputHandler<Item, ItemStack> itemInputHandler,
+                                IInputHandler<Chemical, ChemicalStack> chemicalInputHandler, ChemicalUsageMultiplier chemicalUsage, IntConsumer chemicalUsedSoFarChanged,
+                                IOutputHandler<ChanceOutput> outputHandler, Predicate<ChanceOutput> outputEmptyCheck) {
         super(recipe, recheckAllErrors);
         this.itemInputHandler = Objects.requireNonNull(itemInputHandler, "Item input handler cannot be null.");
         this.chemicalInputHandler = Objects.requireNonNull(chemicalInputHandler, "Chemical input handler cannot be null.");
@@ -80,7 +79,7 @@ public class StackablePlantingCachedRecipe extends CachedRecipe<PlantingRecipe> 
      *
      * @param chemicalUsedSoFar Amount of chemical that has been used so far.
      */
-    public void loadSavedUsageSoFar(long chemicalUsedSoFar) {
+    public void loadSavedUsageSoFar(int chemicalUsedSoFar) {
         if (chemicalUsedSoFar > 0) {
             this.chemicalUsedSoFar = chemicalUsedSoFar;
         }
@@ -88,7 +87,7 @@ public class StackablePlantingCachedRecipe extends CachedRecipe<PlantingRecipe> 
 
     @Override
     protected void setupVariableValues() {
-        chemicalUsageMultiplier = Math.max(chemicalUsage.getToUse(chemicalUsedSoFar, getOperatingTicks(), operationsSoFar), 0);
+        chemicalUsageMultiplier = Math.max(chemicalUsage.getToUse(chemicalUsedSoFar / Math.max(1, operationsSoFar), getOperatingTicks()), 0);
     }
 
     @Override
@@ -139,28 +138,30 @@ public class StackablePlantingCachedRecipe extends CachedRecipe<PlantingRecipe> 
             // how much we need to use
             if (!chemicalStack.isEmpty() && recipe.test(itemInput, chemicalStack)) {
                 ChemicalStack recipeChemical = chemicalInputHandler.getRecipeInput(recipe.getChemicalInput());
-                return !recipeChemical.isEmpty() && chemicalStack.getAmount() >= recipeChemical.getAmount();
+                return !recipeChemical.isEmpty() && chemicalStack.amount() >= recipeChemical.amount();
             }
         }
         return false;
     }
 
     @Override
-    protected void useResources(int operations) {
-        super.useResources(operations);
-        if (chemicalUsageMultiplier <= 0) {
-            // We don't need to use the chemical
-            return;
+    protected boolean useResources(int operations, TransactionContext transaction) {
+        if (!super.useResources(operations, transaction)) {
+            return false;
         } else if (recipeChemical == null || recipeChemical.isEmpty()) {
-            // Something went wrong, this if should never really be true if we are in useResources
-            return;
+            return false;
         }
         // Note: We should have enough because of the getOperationsThisTick call to reduce it based on amounts
-        long toUse = operations * chemicalUsageMultiplier;
-        chemicalInputHandler.use(recipeChemical, toUse);
-        chemicalUsedSoFar += toUse;
-        chemicalUsedSoFarChanged.accept(chemicalUsedSoFar);
+        int toUse = operations * chemicalUsageMultiplier;
+        if (!chemicalInputHandler.use(recipeChemical, toUse, transaction)) {
+            return false;
+        }
         operationsSoFar = operations;
+        if (toUse > 0) {
+            chemicalUsedSoFar += toUse;
+            chemicalUsedSoFarChanged.accept(chemicalUsedSoFar);
+        }
+        return true;
     }
 
     @Override
@@ -171,18 +172,17 @@ public class StackablePlantingCachedRecipe extends CachedRecipe<PlantingRecipe> 
     }
 
     @Override
-    protected void finishProcessing(int operations) {
+    protected boolean finishProcessing(int operations, TransactionContext transaction) {
         if (recipeChemical != null && output != null && !recipeItem.isEmpty() && !recipeChemical.isEmpty() && !outputEmptyCheck.test(output)) {
-            if (chemicalUsageMultiplier > 0) {
-                chemicalInputHandler.use(recipeChemical, operations * chemicalUsageMultiplier);
-            }
-            outputHandler.handleOutput(output, operations);
+            return chemicalInputHandler.use(recipeChemical, operations * chemicalUsageMultiplier, transaction) &&
+                    outputHandler.handleOutput(output, operations, transaction);
         }
+        return false;
     }
 
-    public static StackablePlantingCachedRecipe planting(PlantingRecipe recipe, BooleanSupplier recheckAllErrors, IInputHandler<@NotNull ItemStack> itemInputHandler,
-                                                         ILongInputHandler<@NotNull ChemicalStack> chemicalInputHandler, StackableChemicalUsageMultiplier chemicalUsage,
-                                                         LongConsumer chemicalUsedSoFarChanged, IOutputHandler<ChanceOutput> outputHandler) {
+    public static StackablePlantingCachedRecipe planting(PlantingRecipe recipe, BooleanSupplier recheckAllErrors, IInputHandler<Item, ItemStack> itemInputHandler,
+                                                IInputHandler<Chemical, ChemicalStack> chemicalInputHandler, ChemicalUsageMultiplier chemicalUsage,
+                                                IntConsumer chemicalUsedSoFarChanged, IOutputHandler<ChanceOutput> outputHandler) {
         return new StackablePlantingCachedRecipe(recipe, recheckAllErrors, itemInputHandler, chemicalInputHandler, chemicalUsage,
                 chemicalUsedSoFarChanged, outputHandler, ConstantPredicates.alwaysFalse());
     }

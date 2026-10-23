@@ -1,9 +1,5 @@
 package com.jerry.genextras.client.gui;
 
-import com.jerry.genextras.client.gui.element.GuiNaquadahReactorTab;
-import com.jerry.genextras.common.network.to_server.PacketGenExtraGuiInteract;
-import com.jerry.genextras.common.tile.naquadah.TileEntityNaquadahReactorController;
-
 import mekanism.client.gui.element.gauge.GaugeType;
 import mekanism.client.gui.element.gauge.GuiChemicalGauge;
 import mekanism.client.gui.element.progress.GuiProgress;
@@ -12,49 +8,49 @@ import mekanism.client.gui.element.text.GuiTextField;
 import mekanism.common.inventory.container.tile.EmptyTileContainer;
 import mekanism.common.network.PacketUtils;
 import mekanism.common.util.text.InputValidator;
+import com.jerry.genextras.client.gui.element.GuiNaquadahReactorTab;
+import com.jerry.genextras.client.gui.element.GuiNaquadahReactorTab.NaquadahReactorTab;
 import mekanism.generators.common.GeneratorsLang;
-
-import net.minecraft.client.gui.GuiGraphics;
+import com.jerry.genextras.common.network.to_server.PacketGenExtraGuiInteract;
+import com.jerry.genextras.common.network.to_server.PacketGenExtraGuiInteract.GenExtraGuiInteraction;
+import com.jerry.genextras.common.tile.naquadah.TileEntityNaquadahReactorController;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 
-import org.jetbrains.annotations.NotNull;
-
 public class GuiNaquadahReactorFuel extends GuiNaquadahReactorInfo {
-
-    private GuiTextField injectionRateField;
 
     public GuiNaquadahReactorFuel(EmptyTileContainer<TileEntityNaquadahReactorController> container, Inventory inv, Component title) {
         super(container, inv, title);
     }
 
     @Override
-    public void addGuiElements() {
+    protected void addGuiElements() {
         super.addGuiElements();
-        addRenderableWidget(new GuiChemicalGauge(() -> tile.getMultiblock().naquadahTank, () -> tile.getMultiblock().getChemicalTanks(null), GaugeType.SMALL, this, 30, 64));
-        addRenderableWidget(new GuiChemicalGauge(() -> tile.getMultiblock().fuelTank, () -> tile.getMultiblock().getChemicalTanks(null), GaugeType.STANDARD, this, 84, 50));
-        addRenderableWidget(new GuiChemicalGauge(() -> tile.getMultiblock().uraniumTank, () -> tile.getMultiblock().getChemicalTanks(null), GaugeType.SMALL, this, 138, 64));
+        addRenderableWidget(new GuiChemicalGauge(() -> tile.getMultiblock().naquadahTank, () -> tile.getMultiblock().getChemicalTanks(), GaugeType.SMALL, this, 30, 64));
+        addRenderableWidget(new GuiChemicalGauge(() -> tile.getMultiblock().fuelTank, () -> tile.getMultiblock().getChemicalTanks(), GaugeType.STANDARD, this, 84, 50));
+        addRenderableWidget(new GuiChemicalGauge(() -> tile.getMultiblock().uraniumTank, () -> tile.getMultiblock().getChemicalTanks(), GaugeType.SMALL, this, 138, 64));
         addRenderableWidget(new GuiProgress(() -> tile.getMultiblock().isBurning(), ProgressType.SMALL_RIGHT, this, 52, 76));
         addRenderableWidget(new GuiProgress(() -> tile.getMultiblock().isBurning(), ProgressType.SMALL_LEFT, this, 106, 76));
-        addRenderableWidget(new GuiNaquadahReactorTab(this, tile, GuiNaquadahReactorTab.NaquadahReactorTab.HEAT));
-        addRenderableWidget(new GuiNaquadahReactorTab(this, tile, GuiNaquadahReactorTab.NaquadahReactorTab.STAT));
-        injectionRateField = addRenderableWidget(new GuiTextField(this, 103, 115, 26, 11));
-        injectionRateField.setInputValidator(InputValidator.DIGIT)
-                .setEnterHandler(this::setInjection)
-                .setMaxLength(2);
+        addRenderableWidget(new GuiNaquadahReactorTab(this, tile, NaquadahReactorTab.HEAT));
+        addRenderableWidget(new GuiNaquadahReactorTab(this, tile, NaquadahReactorTab.STAT));
+        GuiTextField injectionRateField = addRenderableWidget(new GuiTextField(this, 103, 115, 26, 11))
+              .setInputValidator(InputValidator.DIGIT)
+              .setEnterHandler(this::setInjection)
+              .setMaxLength(2);
         setInitialFocus(injectionRateField);
     }
 
     @Override
-    protected void drawForegroundText(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY) {
+    protected void drawForegroundText(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
         drawScrollingString(guiGraphics, GeneratorsLang.REACTOR_INJECTION_RATE.translate(tile.getMultiblock().getInjectionRate()), 0, 35, TextAlignment.CENTER, titleTextColor(), 16, false);
         drawScrollingString(guiGraphics, GeneratorsLang.REACTOR_EDIT_RATE.translate(), 4, 117, TextAlignment.RIGHT, titleTextColor(), 99, 2, false);
         super.drawForegroundText(guiGraphics, mouseX, mouseY);
     }
 
-    private void setInjection() {
+    private void setInjection(GuiTextField injectionRateField) {
         if (!injectionRateField.getText().isEmpty()) {
-            PacketUtils.sendToServer(new PacketGenExtraGuiInteract(PacketGenExtraGuiInteract.GenExtraGuiInteraction.INJECTION_RATE, tile, Integer.parseInt(injectionRateField.getText())));
+            PacketUtils.sendToServer(new PacketGenExtraGuiInteract(GenExtraGuiInteraction.INJECTION_RATE, tile, Integer.parseInt(injectionRateField.getText())));
             injectionRateField.setText("");
         }
     }

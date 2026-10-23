@@ -2,10 +2,9 @@
   "required": true,
   "minVersion": "0.8",
   "package": "com.jerry.mekextras.mixin",
-  "compatibilityLevel": "JAVA_21",
+  "compatibilityLevel": "JAVA_25",
   "mixins": [
     "MixinBinInventorySlot",
-    "MixinBlockEnergyCube",
     "MixinBlockTileBuilder",
     "MixinFactory",
     "MixinLogisticalTransporterBase",
@@ -19,12 +18,11 @@
     "MixinUpgradeUtils",
     "integration.mekaf.MixinAdvancedFactory",
     "integration.mekmm.MixinMoreMachineFactory",
-    "resource.ore.MixinOreType"
+    "resource.ore.MixinOreType",
+    "MixinThermodynamicConductor"
   ],
   "client": [
-    "client.MixinMekanismRenderer",
-    "client.MixinRecipeViewerRecipeType",
-    "client.recipe_viewer.emi.MixinMekanismEmi"
+    "client.MixinRecipeViewerRecipeType"
   ],
   "injectors": {
     "defaultRequire": 1,

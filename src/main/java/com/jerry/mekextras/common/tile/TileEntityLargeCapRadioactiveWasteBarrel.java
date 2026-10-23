@@ -1,116 +1,107 @@
 package com.jerry.mekextras.common.tile;
-
 import com.jerry.mekextras.common.block.attribute.ExtraAttribute;
-import com.jerry.mekextras.common.capabilities.chemical.StackedLargeCapWasteBarrel;
 import com.jerry.mekextras.common.tier.RWBTier;
-
-import mekanism.api.*;
-import mekanism.api.chemical.ChemicalStack;
-import mekanism.api.chemical.IChemicalHandler;
-import mekanism.api.chemical.IChemicalTank;
-import mekanism.api.functions.ConstantPredicates;
-import mekanism.common.attachments.containers.ContainerType;
-import mekanism.common.capabilities.Capabilities;
-import mekanism.common.capabilities.holder.chemical.ChemicalTankHelper;
-import mekanism.common.capabilities.holder.chemical.IChemicalTankHolder;
-import mekanism.common.capabilities.proxy.ProxyChemicalHandler;
-import mekanism.common.integration.computer.SpecialComputerMethodWrapper;
-import mekanism.common.integration.computer.annotation.WrappingComputerMethod;
-import mekanism.common.tile.base.TileEntityMekanism;
-import mekanism.common.util.ChemicalUtil;
-import mekanism.common.util.MekanismUtils;
-import mekanism.common.util.NBTUtils;
-
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.block.Block;
+
+
+import mekanism.api.AutomationType;
+import mekanism.api.IConfigurable;
+import mekanism.api.IContentsListener;
+import mekanism.api.MekanismAPITags;
+import mekanism.api.RelativeSide;
+import mekanism.api.SerializationConstants;
+import mekanism.api.chemical.ChemicalResource;
+import mekanism.api.chemical.IChemicalTank;
+import mekanism.common.capabilities.Capabilities;
+import com.jerry.mekextras.common.capabilities.chemical.StackedLargeCapWasteBarrel;
+import mekanism.common.capabilities.holder.container.IContainerHolder;
+import mekanism.common.capabilities.holder.container.MekContainerHelper;
+import mekanism.common.capabilities.proxy.BelowContainerCache;
+import mekanism.common.component.containers.type.ContainerType;
+import mekanism.common.component.containers.type.IContainerType;
+import mekanism.common.config.MekanismConfig;
+import mekanism.common.integration.computer.SpecialComputerMethodWrapper.ComputerChemicalTankWrapper;
+import mekanism.common.integration.computer.annotation.WrappingComputerMethod;
+import mekanism.common.registries.MekanismBlocks;
+import mekanism.common.tile.base.TileEntityMekanism;
+import mekanism.common.util.ResourceUtils;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
-
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.Collections;
-import java.util.List;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
+import org.jetbrains.annotations.UnknownNullability;
+import org.jspecify.annotations.Nullable;
 
 public class TileEntityLargeCapRadioactiveWasteBarrel extends TileEntityMekanism implements IConfigurable {
 
+    private final RWBTier tier;
+    public RWBTier getTier() { return tier; }
+    public StackedLargeCapWasteBarrel getGasTank() { return chemicalTank; }
     private long lastProcessTick;
-    @WrappingComputerMethod(wrapper = SpecialComputerMethodWrapper.ComputerChemicalTankWrapper.class,
-                            methodNames = { "getStored", "getCapacity", "getNeeded",
-                                    "getFilledPercentage" },
-                            docPlaceholder = "barrel")
+    @UnknownNullability//Initialized via getInitialChemicalTanks
+    @WrappingComputerMethod(wrapper = ComputerChemicalTankWrapper.class, methodNames = {"getStored", "getCapacity", "getNeeded",
+                                                                                        "getFilledPercentage"}, docPlaceholder = "barrel")
     StackedLargeCapWasteBarrel chemicalTank;
+
     @Nullable
-    private IChemicalTank belowTank;
-    private boolean resolvedBelowTank;
+    private BelowContainerCache<ChemicalResource, IChemicalTank> belowTankCache;
+
     private int processTicks;
-    private RWBTier tier;
-    private List<BlockCapabilityCache<IChemicalHandler, @Nullable Direction>> chemicalHandlerBelow = Collections.emptyList();
 
     public TileEntityLargeCapRadioactiveWasteBarrel(Holder<Block> blockProvider, BlockPos pos, BlockState state) {
+        tier = java.util.Objects.requireNonNull(ExtraAttribute.getAdvancedTier(blockProvider, RWBTier.class));
         super(blockProvider, pos, state);
         delaySupplier = NO_DELAY;
     }
 
     @Override
-    protected void presetVariables() {
-        super.presetVariables();
-        tier = ExtraAttribute.getAdvancedTier(getBlockHolder(), RWBTier.class);
-    }
-
-    @NotNull
-    @Override
-    public IChemicalTankHolder getInitialChemicalTanks(IContentsListener listener) {
-        ChemicalTankHelper builder = ChemicalTankHelper.forSide(this::getDirection);
-        builder.addTank(chemicalTank = StackedLargeCapWasteBarrel.create(this, listener), RelativeSide.TOP, RelativeSide.BOTTOM);
+    public IContainerHolder<IChemicalTank> getInitialChemicalTanks(IContentsListener listener) {
+        MekContainerHelper<IChemicalTank> builder = MekContainerHelper.forSide(facingSupplier);
+        builder.addContainer(chemicalTank = StackedLargeCapWasteBarrel.create(this, listener), RelativeSide.TOP, RelativeSide.BOTTOM);
         return builder.build();
     }
 
-    public RWBTier getTier() {
-        return tier;
-    }
-
     @Override
-    protected boolean onUpdateServer() {
-        boolean sendUpdatePacket = super.onUpdateServer();
-        if (level != null && level.getGameTime() > lastProcessTick) {
-            // If we are not on the same tick do stuff, otherwise ignore it (anti tick accelerator protection)
-            lastProcessTick = level.getGameTime();
-            if (tier.getDecayAmount() > 0 && !chemicalTank.isEmpty() &&
-                    !chemicalTank.getStack().is(MekanismAPITags.Chemicals.WASTE_BARREL_DECAY_BLACKLIST) &&
+    protected boolean onUpdateServer(ServerLevel level) {
+        boolean sendUpdatePacket = super.onUpdateServer(level);
+        long gameTime = level.getGameTime();
+        if (gameTime > lastProcessTick) {
+            //If we are not on the same tick do stuff, otherwise ignore it (anti tick accelerator protection)
+            lastProcessTick = gameTime;
+            if (!chemicalTank.isEmpty()) {
+                ChemicalResource chemicalType = chemicalTank.resource();
+                int decayAmount = com.google.common.primitives.Ints.saturatedCast(tier.getDecayAmount());
+                if (decayAmount > 0 && !chemicalType.is(MekanismAPITags.Chemicals.WASTE_BARREL_DECAY_BLACKLIST) &&
                     ++processTicks >= tier.getProcessTicks()) {
-                processTicks = 0;
-                chemicalTank.shrinkStack(tier.getDecayAmount(), Action.EXECUTE);
+                    processTicks = 0;
+                    try (Transaction transaction = Transaction.openRoot()) {
+                        chemicalTank.extract(chemicalType, decayAmount, transaction, AutomationType.INTERNAL);
+                        transaction.commit();
+                    }
+                }
             }
             if (getActive()) {
-                if (chemicalHandlerBelow.isEmpty()) {
-                    chemicalHandlerBelow = List.of(Capabilities.CHEMICAL.createCache((ServerLevel) level, worldPosition.below(), Direction.UP, ConstantPredicates.ALWAYS_TRUE, () -> {
-                        // Reset the tank that we know is below this
-                        resolvedBelowTank = false;
-                        belowTank = null;
-                    }));
+                if (belowTankCache == null) {
+                    belowTankCache = new BelowContainerCache<>(Capabilities.CHEMICAL, level, worldPosition);
                 }
-                IChemicalTank below = getBelowTank();
-                if (below == null) {
-                    ChemicalUtil.emit(chemicalHandlerBelow, chemicalTank);
-                } else {
-                    // If the block below this barrel, is also a barrel. Only emit as much as it might be able to
-                    // accept.
+                int toEmit = chemicalTank.amountAsInt();
+                IChemicalTank below = belowTankCache.getContainer(StackedLargeCapWasteBarrel.class);
+                if (below != null) {
+                    //If the block below this barrel, is also a barrel. Only emit as much as it might be able to accept.
                     // This prevents it then trying to go up the chain back to this barrel and any ones above it
-                    ChemicalUtil.emit(chemicalHandlerBelow, chemicalTank, Math.min(below.getNeeded(), chemicalTank.getCapacity()));
+                    toEmit = Math.min(below.getNeededAsInt(ChemicalResource.EMPTY), toEmit);
                 }
+                ResourceUtils.emit(belowTankCache.getHandler(), chemicalTank, toEmit, null);
             }
-            // Note: We don't need to do any checking here if the packet needs due to capacity changing as we do it
+            //Note: We don't need to do any checking here if the packet needs due to capacity changing as we do it
             // in TileentityMekanism after this method is called. And given radioactive waste barrels can only contain
             // radioactive substances the check for radiation scale also will work for syncing capacity for purposes
             // of when the client sneak right-clicks on the barrel
@@ -118,72 +109,56 @@ public class TileEntityLargeCapRadioactiveWasteBarrel extends TileEntityMekanism
         return sendUpdatePacket;
     }
 
-    @Nullable
-    private IChemicalTank getBelowTank() {
-        if (!resolvedBelowTank) {
-            resolvedBelowTank = true;
-            IChemicalHandler belowHandler = chemicalHandlerBelow.getFirst().getCapability();
-            if (belowHandler instanceof ProxyChemicalHandler chemicalHandler && chemicalHandler.getInternalHandler() instanceof TileEntityLargeCapRadioactiveWasteBarrel barrel) {
-                // Note: We don't need to bother with weak references as these are vertical so will always be in the
-                // same chunk
-                belowTank = barrel.chemicalTank;
-            }
-        }
-        return belowTank;
+    @Override
+    public void setLevel(Level world) {
+        super.setLevel(world);
+        //Invalidate the cache as if the level changed then it might no longer be valid
+        belowTankCache = null;
     }
 
-    public StackedLargeCapWasteBarrel getGasTank() {
+    public StackedLargeCapWasteBarrel getChemicalTank() {
         return chemicalTank;
     }
 
-    public double getGasScale() {
-        return chemicalTank.getStored() / (double) chemicalTank.getCapacity();
-    }
-
-    public ChemicalStack getGas() {
-        return chemicalTank.getStack();
+    public double getChemicalScale() {
+        return chemicalTank.amountAsLong() / (double) chemicalTank.capacityAsLong(chemicalTank.resource());
     }
 
     @Override
-    public InteractionResult onSneakRightClick(Player player) {
-        if (!isRemote()) {
+    public InteractionResult onSneakRightClick(Level level, Player player) {
+        if (!level.isClientSide()) {
             setActive(!getActive());
-            Level world = getLevel();
-            if (world != null) {
-                world.playSound(null, getBlockPos().getX(), getBlockPos().getY(), getBlockPos().getZ(), SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.BLOCKS, 0.3F, 1);
-            }
+            level.playSound(null, getBlockPos().getX(), getBlockPos().getY(), getBlockPos().getZ(), SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.BLOCKS, 0.3F, 1);
         }
         return InteractionResult.SUCCESS;
     }
 
     @Override
-    public InteractionResult onRightClick(Player player) {
+    public InteractionResult onRightClick(Level level, Player player) {
         return InteractionResult.PASS;
     }
 
-    @NotNull
     @Override
-    public CompoundTag getReducedUpdateTag(@NotNull HolderLookup.Provider provider) {
-        CompoundTag updateTag = super.getReducedUpdateTag(provider);
-        updateTag.put(SerializationConstants.CHEMICAL, chemicalTank.serializeNBT(provider));
-        updateTag.putInt(SerializationConstants.PROGRESS, processTicks);
-        return updateTag;
+    public void writeReducedUpdatedTag(ValueOutput output) {
+        super.writeReducedUpdatedTag(output);
+        output.putChild(SerializationConstants.CHEMICAL, chemicalTank);
+        output.putInt(SerializationConstants.PROGRESS, processTicks);
     }
 
     @Override
-    public void handleUpdateTag(@NotNull CompoundTag tag, @NotNull HolderLookup.Provider provider) {
-        super.handleUpdateTag(tag, provider);
-        NBTUtils.setCompoundIfPresent(tag, SerializationConstants.CHEMICAL, nbt -> chemicalTank.deserializeNBT(provider, nbt));
-        NBTUtils.setIntIfPresent(tag, SerializationConstants.PROGRESS, val -> processTicks = val);
+    public void handleUpdateTag(ValueInput input) {
+        super.handleUpdateTag(input);
+        input.readChild(SerializationConstants.CHEMICAL, chemicalTank);
+        processTicks = input.getIntOr(SerializationConstants.PROGRESS, processTicks);
     }
 
     @Override
     public int getRedstoneLevel() {
-        return MekanismUtils.redstoneLevelFromContents(chemicalTank.getStored(), chemicalTank.getCapacity());
+        return ContainerType.CHEMICAL.getRedstoneSignalFromContainer(chemicalTank);
     }
 
     @Override
-    protected boolean makesComparatorDirty(ContainerType<?, ?, ?> type) {
+    protected boolean makesComparatorDirty(IContainerType<?, ?> type) {
         return type == ContainerType.CHEMICAL;
     }
 }

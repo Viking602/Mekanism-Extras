@@ -1,18 +1,10 @@
 {
   "type": "minecraft:crafting_shaped",
   "key": {
-    "A": {
-      "tag": "mekanism_extras:alloys/radiance"
-    },
-    "C": {
-      "tag": "c:circuits/absolute"
-    },
-    "I": {
-      "tag": "c:gems/emerald"
-    },
-    "P": {
-      "tag": "minecraft:planks"
-    }
+    "A": "#mekanism_extras:alloys/radiance",
+    "C": "#c:circuits/absolute",
+    "I": "#c:gems/emerald",
+    "P": "#minecraft:planks"
   },
   "pattern": [
     "ACA",

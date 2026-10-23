@@ -1,15 +1,9 @@
 {
   "type": "minecraft:crafting_shaped",
   "key": {
-    "E": {
-      "item": "mekanism:energy_tablet"
-    },
-    "S": {
-      "item": "mekanism:steel_casing"
-    },
-    "P": {
-      "item": "mekanism:induction_casing"
-    }
+    "E": "mekanism:energy_tablet",
+    "S": "mekanism:steel_casing",
+    "P": "mekanism:induction_casing"
   },
   "pattern": [
     "PSP",

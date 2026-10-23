@@ -13,7 +13,7 @@
     },
     "facing=west,active=false": {
       "model": "mekanism_extras:block/factory/pigment_extracting/supreme",
-      "y": -90
+      "y": 270
     },
     "facing=north,active=true": {
       "model": "mekanism_extras:block/factory/pigment_extracting/active/supreme"
@@ -28,7 +28,7 @@
     },
     "facing=west,active=true": {
       "model": "mekanism_extras:block/factory/pigment_extracting/active/supreme",
-      "y": -90
+      "y": 270
     }
   }
 }

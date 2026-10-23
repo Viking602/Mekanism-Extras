@@ -1,116 +1,135 @@
 package com.jerry.mekextras.common.item.block;
+import mekanism.common.item.block.*;
 
-import com.jerry.mekextras.common.attachments.containers.energy.ExtraComponentBackedEnergyCubeContainer;
-import com.jerry.mekextras.common.block.BlockExtraEnergyCube;
-import com.jerry.mekextras.common.block.attribute.ExtraAttribute;
-import com.jerry.mekextras.common.tier.ECTier;
-
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.function.Consumer;
 import mekanism.api.RelativeSide;
+import mekanism.api.energy.IEnergyContainer;
 import mekanism.api.text.EnumColor;
 import mekanism.common.MekanismLang;
-import mekanism.common.attachments.component.AttachedEjector;
-import mekanism.common.attachments.component.AttachedSideConfig;
-import mekanism.common.attachments.containers.energy.EnergyContainersBuilder;
+import com.jerry.mekextras.common.block.BlockExtraEnergyCube;
+import mekanism.common.block.attribute.Attribute;
+import mekanism.common.component.component.AttachedEjector;
+import mekanism.common.component.component.AttachedSideConfig;
+import mekanism.common.component.component.AttachedSideConfig.LightConfigInfo;
+import mekanism.common.component.containers.creator.IContainerCreator;
+import mekanism.common.component.containers.energy.EnergyContainerBuilder;
+import mekanism.common.component.containers.type.ContainerType;
 import mekanism.common.config.MekanismConfig;
 import mekanism.common.lib.transmitter.TransmissionType;
-import mekanism.common.registration.impl.CreativeTabDeferredRegister;
+import mekanism.common.registration.impl.CreativeTabDeferredRegister.ICustomCreativeTabContents;
+import mekanism.common.registries.MekanismBlocks;
 import mekanism.common.registries.MekanismDataComponents;
+import com.jerry.mekextras.common.tier.ECTier;
 import mekanism.common.tile.component.config.DataType;
 import mekanism.common.util.EnumUtils;
+import mekanism.common.util.ItemAccessUtils;
 import mekanism.common.util.StorageUtils;
 import mekanism.common.util.text.EnergyDisplay;
-
-import net.minecraft.Util;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.Util;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.neoforged.neoforge.transfer.access.ItemAccess;
+import net.neoforged.neoforge.transfer.item.ItemResource;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+public class ItemBlockExtraEnergyCube extends ItemBlockExtraTooltip<BlockExtraEnergyCube> implements ICustomCreativeTabContents {
 
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
-
-public class ItemBlockExtraEnergyCube extends ItemBlockExtraTooltip<BlockExtraEnergyCube> implements CreativeTabDeferredRegister.ICustomCreativeTabContents {
-
-    public static final AttachedSideConfig SIDE_CONFIG = sideConfig(AttachedSideConfig.LightConfigInfo.FRONT_OUT_EJECT);
+    public static final AttachedSideConfig SIDE_CONFIG = sideConfig(LightConfigInfo.FRONT_OUT_EJECT);
     public static final AttachedSideConfig ALL_INPUT = Util.make(() -> {
         Map<RelativeSide, DataType> sideData = new EnumMap<>(RelativeSide.class);
         for (RelativeSide side : EnumUtils.SIDES) {
             sideData.put(side, DataType.INPUT);
         }
-        return sideConfig(new AttachedSideConfig.LightConfigInfo(sideData, false));
+        return sideConfig(new LightConfigInfo(sideData, false));
     });
     public static final AttachedSideConfig ALL_OUTPUT = Util.make(() -> {
         Map<RelativeSide, DataType> sideData = new EnumMap<>(RelativeSide.class);
         for (RelativeSide side : EnumUtils.SIDES) {
             sideData.put(side, DataType.OUTPUT);
         }
-        return sideConfig(new AttachedSideConfig.LightConfigInfo(sideData, true));
+        return sideConfig(new LightConfigInfo(sideData, true));
     });
 
-    private static AttachedSideConfig sideConfig(AttachedSideConfig.LightConfigInfo energyConfig) {
-        Map<TransmissionType, AttachedSideConfig.LightConfigInfo> configInfo = new EnumMap<>(TransmissionType.class);
-        configInfo.put(TransmissionType.ITEM, AttachedSideConfig.LightConfigInfo.FRONT_OUT_NO_EJECT);
+    private static AttachedSideConfig sideConfig(LightConfigInfo energyConfig) {
+        Map<TransmissionType, LightConfigInfo> configInfo = new EnumMap<>(TransmissionType.class);
+        configInfo.put(TransmissionType.ITEM, LightConfigInfo.FRONT_OUT_NO_EJECT);
         configInfo.put(TransmissionType.ENERGY, energyConfig);
         return new AttachedSideConfig(configInfo);
     }
 
-    public ItemBlockExtraEnergyCube(BlockExtraEnergyCube block, Properties properties) {
+    private final ECTier tier;
+
+    public ItemBlockExtraEnergyCube(BlockExtraEnergyCube block, Item.Properties properties) {
+        tier = java.util.Objects.requireNonNull(com.jerry.mekextras.common.block.attribute.ExtraAttribute.getAdvancedTier(block, ECTier.class));
         super(block, true, properties
-                .component(MekanismDataComponents.EJECTOR, AttachedEjector.DEFAULT)
-                .component(MekanismDataComponents.SIDE_CONFIG, SIDE_CONFIG));
+              .component(MekanismDataComponents.EJECTOR, AttachedEjector.DEFAULT)
+              .component(MekanismDataComponents.SIDE_CONFIG, SIDE_CONFIG)
+        );
     }
 
     @Override
     public ECTier getAdvancedTier() {
-        return ExtraAttribute.getAdvancedTier(getBlock(), ECTier.class);
+        return tier;
     }
 
     @Override
-    public void appendHoverText(@NotNull ItemStack stack, @NotNull TooltipContext context, @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
-        StorageUtils.addStoredEnergy(stack, tooltip, true);
-        tooltip.add(MekanismLang.CAPACITY.translateColored(EnumColor.INDIGO, EnumColor.GRAY, EnergyDisplay.of(getAdvancedTier().getMaxEnergy())));
-        super.appendHoverText(stack, context, tooltip, flag);
+    @Deprecated
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay,
+          Consumer<Component> tooltipAdder, TooltipFlag flag) {
+        StorageUtils.addStoredEnergy(ItemAccessUtils.sideEffectFreeAccess(stack), tooltipAdder, true);
+        tooltipAdder.accept(MekanismLang.CAPACITY.translateColored(EnumColor.INDIGO, EnumColor.GRAY, EnergyDisplay.of(tier.getCapacity())));
+        super.appendHoverText(stack, context, tooltipDisplay, tooltipAdder, flag);
     }
 
     @Override
-    protected void addTypeDetails(@NotNull ItemStack stack, @Nullable Item.TooltipContext context, @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
-        // Don't call super so that we can exclude the stored energy from being shown as we show it in hover text
+    protected void addTypeDetails(ItemStack stack, ItemAccess itemAccess, Item.TooltipContext context, TooltipDisplay tooltipDisplay,
+          Consumer<Component> tooltipAdder, TooltipFlag flag) {
+        //Don't call super so that we can exclude the stored energy from being shown as we show it in hover text
     }
 
     @Override
-    public boolean isBarVisible(@NotNull ItemStack stack) {
-        // If we are currently stacked, don't display the bar as it will overlap the stack count
-        return stack.getCount() == 1;
+    public boolean isBarVisible(ItemStack stack) {
+        return StorageUtils.isEnergyBarVisible(stack);
     }
 
     @Override
-    public int getBarWidth(@NotNull ItemStack stack) {
+    public int getBarWidth(ItemStack stack) {
         return StorageUtils.getEnergyBarWidth(stack);
     }
 
     @Override
-    public int getBarColor(@NotNull ItemStack stack) {
+    public int getBarColor(ItemStack stack) {
         return MekanismConfig.client.energyColor.get();
     }
 
     @Override
     public void addItems(Holder<Item> item, Consumer<ItemStack> tabOutput) {
-        tabOutput.accept(StorageUtils.getFilledEnergyVariant(item));
+        if (false) {
+            //Add the empty and charged variants
+            tabOutput.accept(withCreativeSideConfig(ALL_INPUT).toStack());
+            tabOutput.accept(ContainerType.ENERGY.getFilledVariant(withCreativeSideConfig(ALL_OUTPUT), null));
+        } else {
+            tabOutput.accept(ContainerType.ENERGY.getFilledVariant(item, null));
+        }
     }
 
     @Override
     public boolean addDefault() {
-        return CreativeTabDeferredRegister.ICustomCreativeTabContents.super.addDefault();
+        return true;
+    }
+
+    public static ItemResource withCreativeSideConfig(AttachedSideConfig config) {
+        return ItemResource.of(MekanismBlocks.CREATIVE_ENERGY_CUBE)
+              .with(MekanismDataComponents.SIDE_CONFIG, config);
     }
 
     @Override
-    protected EnergyContainersBuilder addDefaultEnergyContainers(EnergyContainersBuilder builder) {
-        return builder.addContainer(ExtraComponentBackedEnergyCubeContainer::create);
+    protected IContainerCreator<IEnergyContainer, Long> getDefaultEnergyContainer() {
+        return EnergyContainerBuilder.creator(com.jerry.mekextras.common.attachments.containers.energy.ExtraComponentBackedEnergyCubeContainer::create);
     }
 }

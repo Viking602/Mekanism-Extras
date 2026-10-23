@@ -80,7 +80,7 @@ public record ExtraPacketTileButtonPress(ClickedTileButton buttonClicked,
 
         BACK_BUTTON(tile -> {
             // Special handling to basically reset to the tiles default gui container
-            AttributeGui attributeGui = Attribute.get(tile.getBlockHolder(), AttributeGui.class);
+            AttributeGui attributeGui = Attribute.get(tile.getBlockState(), AttributeGui.class);
             return attributeGui != null ? attributeGui.getProvider(tile, false) : null;
         }),
         TAB_MAIN(tile -> {

@@ -1,7 +1,13 @@
 package com.jerry.mekextras.common.tile.factory;
+import com.jerry.mekextras.api.ExtraUpgrade;
+import com.jerry.mekextras.api.mixin.IMixinMachineEnergyContainer;
+import com.jerry.mekextras.common.block.attribute.ExtraAttribute;
+import com.jerry.mekextras.common.util.ExtraUpgradeUtils;
 
+
+import java.util.List;
+import java.util.Set;
 import mekanism.api.inventory.IInventorySlot;
-import mekanism.api.math.MathUtils;
 import mekanism.api.recipes.ItemStackToItemStackRecipe;
 import mekanism.api.recipes.cache.CachedRecipe;
 import mekanism.api.recipes.cache.CachedRecipe.OperationTracker.RecipeError;
@@ -13,33 +19,27 @@ import mekanism.common.recipe.MekanismRecipeType;
 import mekanism.common.recipe.lookup.ISingleRecipeLookupHandler.ItemRecipeLookupHandler;
 import mekanism.common.recipe.lookup.cache.InputRecipeCache.SingleItem;
 import mekanism.common.upgrade.MachineUpgradeData;
-import mekanism.common.util.InventoryUtils;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.common.util.TriPredicate;
+import net.neoforged.neoforge.transfer.item.ItemResource;
+import org.jspecify.annotations.Nullable;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+//Smelting, enriching, crushing
+public class TileEntityExtraItemStackToItemStackFactory extends TileEntityExtraItemToItemFactory<ItemStackToItemStackRecipe> implements ItemRecipeLookupHandler<ItemStackToItemStackRecipe> {
 
-import java.util.List;
-import java.util.Set;
-
-// Smelting, enriching, crushing
-public class TileEntityExtraItemStackToItemStackFactory extends TileEntityExtraItemToItemFactory<ItemStackToItemStackRecipe> implements
-                                                        ItemRecipeLookupHandler<ItemStackToItemStackRecipe> {
-
-    private static final TriPredicate<ItemStackToItemStackRecipe, ItemStack, ItemStack> OUTPUT_CHECK = (recipe, input, output) -> InventoryUtils.areItemsStackable(recipe.getOutput(input), output);
+    private static final TriPredicate<ItemStackToItemStackRecipe, ItemResource, ItemResource> CAN_OUTPUT_STACK =
+          (recipe, input, outputContents) -> outputContents.isEmpty() || outputContents.matches(recipe.getOutput(input));
     private static final List<RecipeError> TRACKED_ERROR_TYPES = List.of(
-            RecipeError.NOT_ENOUGH_ENERGY,
-            RecipeError.NOT_ENOUGH_INPUT,
-            RecipeError.NOT_ENOUGH_OUTPUT_SPACE,
-            RecipeError.INPUT_DOESNT_PRODUCE_OUTPUT);
+          RecipeError.NOT_ENOUGH_ENERGY,
+          RecipeError.NOT_ENOUGH_INPUT,
+          RecipeError.NOT_ENOUGH_OUTPUT_SPACE,
+          RecipeError.INPUT_DOESNT_PRODUCE_OUTPUT
+    );
     private static final Set<RecipeError> GLOBAL_ERROR_TYPES = Set.of(RecipeError.NOT_ENOUGH_ENERGY);
 
     public TileEntityExtraItemStackToItemStackFactory(Holder<Block> blockProvider, BlockPos pos, BlockState state) {
@@ -47,39 +47,38 @@ public class TileEntityExtraItemStackToItemStackFactory extends TileEntityExtraI
     }
 
     @Override
-    public boolean isItemValidForSlot(@NotNull ItemStack stack) {
-        // contains recipe in general already validated by isValidInputItem
+    public boolean isItemValidForSlot(ItemResource itemType) {
+        //contains recipe in general already validated by isValidInputItem
         return true;
     }
 
     @Override
-    public boolean isValidInputItem(@NotNull ItemStack stack) {
-        return containsRecipe(stack);
+    public boolean isValidInputItem(ItemResource itemType) {
+        return containsRecipe(itemType);
     }
 
     @Override
-    protected int getNeededInput(ItemStackToItemStackRecipe recipe, ItemStack inputStack) {
-        return MathUtils.clampToInt(recipe.getInput().getNeededAmount(inputStack));
+    protected int getNeededInput(ItemStackToItemStackRecipe recipe, ItemResource inputType) {
+        return recipe.getInput().getNeededAmount(inputType);
     }
 
     @Override
-    protected boolean isCachedRecipeValid(@Nullable CachedRecipe<ItemStackToItemStackRecipe> cached, @NotNull ItemStack stack) {
-        return cached != null && cached.getRecipe().getInput().testType(stack);
+    protected boolean isCachedRecipeValid(@Nullable CachedRecipe<ItemStackToItemStackRecipe> cached, ItemResource itemType) {
+        return cached != null && cached.getRecipe().getInput().testType(itemType);
     }
 
+    @Nullable
     @Override
-    protected ItemStackToItemStackRecipe findRecipe(int process, @NotNull ItemStack fallbackInput, @NotNull IInventorySlot outputSlot,
-                                                    @Nullable IInventorySlot secondaryOutputSlot) {
-        return getRecipeType().getInputCache().findTypeBasedRecipe(level, fallbackInput, outputSlot.getStack(), OUTPUT_CHECK);
+    protected ItemStackToItemStackRecipe findRecipe(ItemResource fallbackInput, IInventorySlot outputSlot, @Nullable IInventorySlot secondaryOutputSlot) {
+        return getRecipeType().getInputCache().findTypeBasedRecipe(level, fallbackInput, outputSlot.resource(), CAN_OUTPUT_STACK);
     }
 
-    @NotNull
     @Override
     public IMekanismRecipeTypeProvider<SingleRecipeInput, ItemStackToItemStackRecipe, SingleItem<ItemStackToItemStackRecipe>> getRecipeType() {
         return switch (type) {
             case ENRICHING -> MekanismRecipeType.ENRICHING;
             case CRUSHING -> MekanismRecipeType.CRUSHING;
-            // TODO: Make it so that it throws an error if it is not one of the three types
+            //TODO: Make it so that it throws an error if it is not one of the three types
             default -> MekanismRecipeType.SMELTING;
         };
     }
@@ -89,7 +88,7 @@ public class TileEntityExtraItemStackToItemStackFactory extends TileEntityExtraI
         return switch (type) {
             case ENRICHING -> RecipeViewerRecipeType.ENRICHING;
             case CRUSHING -> RecipeViewerRecipeType.CRUSHING;
-            // TODO: Make it so that it throws an error if it is not one of the three types
+            //TODO: Make it so that it throws an error if it is not one of the three types
             default -> RecipeViewerRecipeType.SMELTING;
         };
     }
@@ -100,24 +99,21 @@ public class TileEntityExtraItemStackToItemStackFactory extends TileEntityExtraI
         return findFirstRecipe(inputHandlers[cacheIndex]);
     }
 
-    // TODO:如果能加升级了，记得把所有createNewCachedRecipe中的switch改了
-    @NotNull
     @Override
-    public CachedRecipe<ItemStackToItemStackRecipe> createNewCachedRecipe(@NotNull ItemStackToItemStackRecipe recipe, int cacheIndex) {
-        return OneInputCachedRecipe.itemToItem(recipe, recheckAllRecipeErrors[cacheIndex], inputHandlers[cacheIndex], outputHandlers[cacheIndex])
-                .setErrorsChanged(errors -> errorTracker.onErrorsChanged(errors, cacheIndex))
-                .setCanHolderFunction(this::canFunction)
-                .setActive(active -> setActiveState(active, cacheIndex))
-                .setEnergyRequirements(energyContainer::getEnergyPerTick, energyContainer)
-                .setRequiredTicks(this::getTicksRequired)
-                .setOnFinish(this::markForSave)
-                .setBaselineMaxOperations(this::getOperationsPerTick)
-                .setOperatingTicksChanged(operatingTicks -> progress[cacheIndex] = operatingTicks);
+    public CachedRecipe<ItemStackToItemStackRecipe> createNewCachedRecipe(ItemStackToItemStackRecipe recipe, int cacheIndex) {
+        return new OneInputCachedRecipe<>(recipe, recheckAllRecipeErrors[cacheIndex], inputHandlers[cacheIndex], outputHandlers[cacheIndex])
+              .setErrorsChanged(errors -> errorTracker.onErrorsChanged(errors, cacheIndex))
+              .setCanHolderFunction(this::canFunction)
+              .setActive(active -> setActiveState(active, cacheIndex))
+              .setEnergyRequirements(energyContainer::getEnergyPerTick, energyContainer)
+              .setRequiredTicks(this::getTicksRequired)
+              .setOnFinish(this::markForSave)
+              .setOperatingTicksChanged(operatingTicks -> progress[cacheIndex] = operatingTicks)
+              .setBaselineMaxOperations(this::getOperationsPerTick);
     }
 
-    @NotNull
     @Override
     public MachineUpgradeData getUpgradeData(HolderLookup.Provider provider) {
-        return new MachineUpgradeData(provider, redstone, getControlType(), getEnergyContainer(), progress, energySlot, inputSlots, outputSlots, isSorting(), getComponents());
+        return new MachineUpgradeData(provider, redstone, getControlType(), energyContainer, progress, energySlot, inputSlots, outputSlots, isSorting(), getComponents(), problemPath());
     }
 }

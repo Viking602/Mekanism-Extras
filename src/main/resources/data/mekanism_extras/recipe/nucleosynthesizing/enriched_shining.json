@@ -2,16 +2,16 @@
   "type": "mekanism:nucleosynthesizing",
   "duration": 2000,
   "chemical_input": {
-    "amount":1,
-    "chemical":"mekanism:antimatter"
+    "amount": 1,
+    "chemical": "mekanism:antimatter"
   },
-  "item_input":{
+  "item_input": {
     "count": 1,
-    "item":"mekanism_extras:enriched_thermonuclear"
+    "ingredient": "mekanism_extras:enriched_thermonuclear"
   },
-  "output":{
+  "output": {
     "count": 1,
-    "id":"mekanism_extras:enriched_shining"
+    "id": "mekanism_extras:enriched_shining"
   },
-  "per_tick_usage":false
+  "per_tick_usage": false
 }

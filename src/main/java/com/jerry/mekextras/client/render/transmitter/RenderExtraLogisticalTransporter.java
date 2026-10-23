@@ -1,111 +1,157 @@
 package com.jerry.mekextras.client.render.transmitter;
 
-import com.jerry.mekextras.common.tier.transmitter.TPTier;
-import com.jerry.mekextras.common.tile.transmitter.TileEntityExtraLogisticalTransporterBase;
-
-import mekanism.api.text.EnumColor;
-import mekanism.client.model.ModelTransporterBox;
 import mekanism.client.render.MekanismRenderer;
-import mekanism.client.render.transmitter.RenderTransmitterBase;
-import mekanism.common.base.ProfilerConstants;
-import mekanism.common.config.MekanismConfig;
-import mekanism.common.content.network.transmitter.LogisticalTransporterBase;
-import mekanism.common.content.transporter.TransporterStack;
-import mekanism.common.lib.inventory.HashedItem;
-import mekanism.common.util.TransporterUtils;
-
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
-import net.minecraft.client.renderer.entity.EntityRenderer;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.util.profiling.ProfilerFiller;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.Vec3;
-
+import net.minecraft.util.ARGB;
+import net.minecraft.util.LightCoordsUtil;
 import com.mojang.blaze3d.vertex.PoseStack;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Set;
+import java.util.function.Supplier;
+import mekanism.api.text.EnumColor;
+import mekanism.client.render.transmitter.TransmitterRenderState.TransporterRenderState;
+import mekanism.client.render.transmitter.TransmitterRenderState.TransporterRenderState.TransporterStackRenderState;
+import mekanism.common.Mekanism;
+import mekanism.common.base.ProfilerConstants;
+import mekanism.common.content.network.transmitter.LogisticalTransporterBase;
+import mekanism.common.content.transporter.TransporterStack;
+import com.jerry.mekextras.common.tile.transmitter.TileEntityExtraLogisticalTransporterBase;
+import mekanism.common.util.MekanismUtils;
+import mekanism.common.util.MekanismUtils.ResourceType;
+import mekanism.common.util.TransporterUtils;
+import net.minecraft.client.model.geom.ModelLayerLocation;
+import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.model.geom.PartPose;
+import net.minecraft.client.model.geom.builders.CubeListBuilder;
+import net.minecraft.client.model.geom.builders.LayerDefinition;
+import net.minecraft.client.model.geom.builders.MeshDefinition;
+import net.minecraft.client.model.geom.builders.PartDefinition;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.item.ItemModelResolver;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.transfer.item.ItemResource;
+import org.jspecify.annotations.Nullable;
+import org.joml.Vector3f;
 
-import java.util.*;
+public class RenderExtraLogisticalTransporter<TILE extends TileEntityExtraLogisticalTransporterBase, STATE extends TransporterRenderState> extends ExtraTransmitterRenderer<TILE, STATE> {
 
-public class RenderExtraLogisticalTransporter extends RenderTransmitterBase<TileEntityExtraLogisticalTransporterBase> {
+    public static final ModelLayerLocation BOX_LAYER = new ModelLayerLocation(Mekanism.rl("transporter_box"), "main");
+    private static final Identifier BOX_TEXTURE = MekanismUtils.getResource(ResourceType.RENDER, "transporter_box.png");
 
-    private static final Map<Direction, MekanismRenderer.Model3D> cachedOverlays = new EnumMap<>(Direction.class);
-    private final ModelTransporterBox modelBox;
-    private final LazyItemRenderer itemRenderer = new LazyItemRenderer();
+    public static LayerDefinition createBoxLayer() {
+        MeshDefinition mesh = new MeshDefinition();
+        PartDefinition root = mesh.getRoot();
+        root.addOrReplaceChild("box", CubeListBuilder.create().addBox(0F, 0F, 0F, 7, 7, 7),
+              //TODO - 26.1: Do we need the offset, or can we just move the origin?
+              PartPose.offset(-3.5F, 0, -3.5F)
+        );
+        return LayerDefinition.create(mesh, 64, 64);
+    }
 
-    public RenderExtraLogisticalTransporter(BlockEntityRendererProvider.Context context) {
+    private final ItemModelResolver itemModelResolver;
+    private final Supplier<STATE> stateCreator;
+    private final ModelPart modelBox;
+
+    public RenderExtraLogisticalTransporter(BlockEntityRendererProvider.Context context, Supplier<STATE> stateCreator) {
         super(context);
-        modelBox = new ModelTransporterBox(context.getModelSet());
+        this.stateCreator = stateCreator;
+        this.modelBox = context.bakeLayer(BOX_LAYER);
+        this.itemModelResolver = context.itemModelResolver();
+    }
+
+    @SuppressWarnings("unchecked")
+    public RenderExtraLogisticalTransporter(BlockEntityRendererProvider.Context context) { this(context, () -> (STATE) new TransporterRenderState()); }
+
+    @Override
+    public STATE createRenderState() {
+        return stateCreator.get();
     }
 
     @Override
-    protected void render(@NotNull TileEntityExtraLogisticalTransporterBase tile, float partialTick, @NotNull PoseStack matrix, @NotNull MultiBufferSource renderer, int light, int overlayLight, @NotNull ProfilerFiller profiler) {
-        LogisticalTransporterBase transporter = tile.getTransmitter();
-        BlockPos pos = tile.getBlockPos();
-        if (!MekanismConfig.client.opaqueTransmitters.get()) {
-            Collection<TransporterStack> inTransit = transporter.getTransit();
-            // System.out.println(inTransit);
-            if (!inTransit.isEmpty()) {
-                matrix.pushPose();
-                itemRenderer.init(tile.getLevel(), pos);
-
-                float partial = partialTick * TPTier.getSpeed(transporter.tier);
-                Collection<TransporterStack> reducedTransit = getReducedTransit(inTransit);
-                for (TransporterStack stack : reducedTransit) {
-                    float[] stackPos = TransporterUtils.getStackPosition(transporter, stack, partial);
-                    matrix.pushPose();
-                    matrix.translate(stackPos[0], stackPos[1], stackPos[2]);
-                    matrix.scale(0.75F, 0.75F, 0.75F);
-                    itemRenderer.renderAsStack(matrix, renderer, stack.itemStack, light);
-                    matrix.popPose();
-                    if (stack.color != null) {
-                        modelBox.render(matrix, renderer, overlayLight, stackPos[0], stackPos[1], stackPos[2], stack.color);
-                    }
+    public void extractRenderState(TILE transporter, STATE state, float partialTick, Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+        super.extractRenderState(transporter, state, partialTick, cameraPosition, breakProgress);
+        LogisticalTransporterBase transmitter = transporter.getTransmitter();
+        state.stacks = java.util.List.of();
+        Collection<TransporterStack> inTransit = transmitter.getTransit();
+        if (!inTransit.isEmpty()) {
+            Level level = transmitter.getLevel();
+            float partial = partialTick * com.jerry.mekextras.common.tier.transmitter.TPTier.getSpeed(transmitter.tier);
+            state.stacks = new ArrayList<>();
+            Set<TransportInformation> information = new ObjectOpenHashSet<>(inTransit.size());
+            for (TransporterStack stack : inTransit) {
+                //Shrink the in transit list as much as possible. Don't try to render things of the same type that are in the same spot with the same color, ignoring stack size
+                if (!stack.isEmpty() && information.add(new TransportInformation(stack))) {
+                    //Ensure the stack is valid AND we did not already have information matching the stack
+                    //We use add to check if it already contained the value, so that we only have to query the set once
+                    Vector3f stackPos = TransporterUtils.getStackPosition(transmitter, stack, partial);
+                    TransporterStackRenderState stackRenderState = new TransporterStackRenderState(stackPos, stack.color);
+                    //TODO - 26.1: Do we need to do any sort of seed?
+                    this.itemModelResolver.updateForTopItem(stackRenderState.item(), stack.asItemStack(), ItemDisplayContext.GROUND, level, null, 0);
+                    state.stacks.add(stackRenderState);
                 }
-                matrix.popPose();
             }
         }
     }
 
     @Override
-    protected @NotNull String getProfilerSection() {
+    public void submit(STATE state, PoseStack poseStack, SubmitNodeCollector nodeCollector, CameraRenderState camera) {
+        if (!state.stacks.isEmpty()) {
+            poseStack.pushPose();
+            for (TransporterStackRenderState stackRenderState : state.stacks) {
+                poseStack.pushPose();
+                poseStack.translate(stackRenderState.stackPos().x(), stackRenderState.stackPos().y(), stackRenderState.stackPos().z());
+                if (stackRenderState.color() != null) {
+                    nodeCollector.submitModelPart(
+                          this.modelBox,
+                          poseStack,
+                          //TODO - 26.1: Is this the correct render type to be using? I believe it is what we used to use, so it probably is fine
+                          RenderTypes.entityCutout(BOX_TEXTURE),
+                          //TODO - 26.1: I believe in the past we used LightTexture.FULL_BRIGHT for the model box, check which looks better state.lightCoords
+                          LightCoordsUtil.FULL_BRIGHT,
+                          OverlayTexture.NO_OVERLAY,
+                          //TODO - 26.1: Do we need to pass the texture here as well, or not?
+                          null,
+                          stackRenderState.color().getPackedColor(),
+                          null//TODO - 26.1: Should we render the crumbling progress onto the box around the item inside the transporter? Probably not
+                    );
+                }
+                //TODO - 26.1: We used to render the item before the box, but doing it after lets us skip an extra push/pop.
+                // Does this still render as we expect it to?
+                //Render the item at the center of the block, this translation used to be handled by the item entity's position
+                poseStack.translate(0.5, 0.5, 0.5);
+                poseStack.scale(0.75F, 0.75F, 0.75F);
+                stackRenderState.item().submit(poseStack, nodeCollector, state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
+                poseStack.popPose();
+            }
+            poseStack.popPose();
+        }
+    }
+
+    @Override
+    protected String getProfilerSection() {
         return ProfilerConstants.LOGISTICAL_TRANSPORTER;
-    }
-
-    @Override
-    protected boolean shouldRenderTransmitter(@NotNull TileEntityExtraLogisticalTransporterBase tile, @NotNull Vec3 camera) {
-        return super.shouldRenderTransmitter(tile, camera);
-    }
-
-    private Collection<TransporterStack> getReducedTransit(Collection<TransporterStack> inTransit) {
-        Collection<TransporterStack> reducedTransit = new ArrayList<>();
-        Set<TransportInformation> information = new ObjectOpenHashSet<>();
-        for (TransporterStack stack : inTransit) {
-            if (stack != null && !stack.itemStack.isEmpty() && information.add(new TransportInformation(stack))) {
-                reducedTransit.add(stack);
-            }
-        }
-        return reducedTransit;
     }
 
     private static class TransportInformation {
 
         @Nullable
         private final EnumColor color;
-        private final HashedItem item;
+        private final ItemResource item;
         private final int progress;
 
         private TransportInformation(TransporterStack transporterStack) {
             this.progress = transporterStack.progress;
             this.color = transporterStack.color;
-            this.item = HashedItem.create(transporterStack.itemStack);
+            this.item = transporterStack.getItemType();
         }
 
         @Override
@@ -120,39 +166,11 @@ public class RenderExtraLogisticalTransporter extends RenderTransmitterBase<Tile
         }
 
         @Override
-        public boolean equals(Object obj) {
+        public boolean equals(@Nullable Object obj) {
             if (obj == this) {
                 return true;
             }
             return obj instanceof TransportInformation other && progress == other.progress && color == other.color && item.equals(other.item);
-        }
-    }
-
-    private static class LazyItemRenderer {
-
-        @Nullable
-        private ItemEntity entityItem;
-        @Nullable
-        private EntityRenderer<? super ItemEntity> renderer;
-
-        public void init(Level world, BlockPos pos) {
-            if (entityItem == null) {
-                entityItem = new ItemEntity(EntityType.ITEM, world);
-            } else {
-                entityItem.setLevel(world);
-            }
-            entityItem.setPos(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-            entityItem.age = 0;
-        }
-
-        private void renderAsStack(PoseStack matrix, MultiBufferSource buffer, ItemStack stack, int light) {
-            if (entityItem != null) {
-                if (renderer == null) {
-                    renderer = Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(entityItem);
-                }
-                entityItem.setItem(stack);
-                renderer.render(entityItem, 0, 0, matrix, buffer, light);
-            }
         }
     }
 }

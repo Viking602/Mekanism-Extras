@@ -1,7 +1,8 @@
 {
   "variants": {
     "": {
-      "model": "mekanism_extras:block/transmitter/small/pressurized_tube/supreme"
+      "model": "mekanism_extras:block/transmitter/small/pressurized_tube/supreme",
+      "type": "mekanism:special/transmitter"
     }
   }
 }

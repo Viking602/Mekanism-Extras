@@ -18,6 +18,6 @@ public class GenExtraFluids {
     public static final FluidDeferredRegister GEN_EXTRA_FLUIDS = new FluidDeferredRegister(MekanismExtras.MOD_ID);
 
     public static final FluidRegistryObject<FluidDeferredRegister.MekanismFluidType, BaseFlowingFluid.Source, BaseFlowingFluid.Flowing, LiquidBlock, BucketItem> POLONIUM_CONTAINING_SOLUTION = GEN_EXTRA_FLUIDS.register("polonium_containing_solution", properties -> properties.temperature(330).density(5_230),
-            renderProperties -> renderProperties.texture(Mekanism.rl("liquid/liquid"), Mekanism.rl("liquid/steam_flow")).tint(0xFF47c3a2));
+            renderProperties -> renderProperties.texture(Mekanism.rl("mek_liquid/liquid"), Mekanism.rl("mek_liquid/steam_flow")).tint(0xFF47c3a2));
     public static final FluidRegistryObject<FluidDeferredRegister.MekanismFluidType, BaseFlowingFluid.Source, BaseFlowingFluid.Flowing, LiquidBlock, BucketItem> POLONIUM208 = GEN_EXTRA_FLUIDS.registerLiquidChemical(ExtraChemicalConstants.POLONIUM208);
 }

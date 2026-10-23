@@ -1,6 +1,13 @@
 {
   "pack": {
-    "description": "mekanism_extras resources",
-    "pack_format": 26
+    "description": "Mekanism Extras resources",
+    "min_format": [
+      84,
+      0
+    ],
+    "max_format": [
+      101,
+      1
+    ]
   }
 }

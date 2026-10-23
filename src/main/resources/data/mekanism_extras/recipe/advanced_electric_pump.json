@@ -1,18 +1,10 @@
 {
   "type": "mekanism:mek_data",
   "key": {
-    "A": {
-      "tag": "c:alloys/supreme"
-    },
-    "B": {
-      "item": "minecraft:bucket"
-    },
-    "O": {
-      "tag": "c:storage_blocks/osmium"
-    },
-    "X": {
-      "item": "mekanism:electric_pump"
-    }
+    "A": "#c:alloys/supreme",
+    "B": "minecraft:bucket",
+    "O": "#c:storage_blocks/osmium",
+    "X": "mekanism:electric_pump"
   },
   "pattern": [
     "BBB",

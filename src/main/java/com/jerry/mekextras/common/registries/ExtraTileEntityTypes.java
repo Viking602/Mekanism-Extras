@@ -28,7 +28,7 @@ import mekanism.common.Mekanism;
 import mekanism.common.capabilities.Capabilities;
 import mekanism.common.content.blocktype.FactoryType;
 import mekanism.common.integration.computer.ComputerCapabilityHelper;
-import mekanism.common.integration.energy.EnergyCompatUtils;
+
 import mekanism.common.registration.impl.BlockRegistryObject;
 import mekanism.common.registration.impl.TileEntityTypeDeferredRegister;
 import mekanism.common.registration.impl.TileEntityTypeDeferredRegister.BlockEntityTypeBuilder;
@@ -178,7 +178,7 @@ public class ExtraTileEntityTypes {
 
     private static TileEntityTypeRegistryObject<TileEntityExtraUniversalCable> registerCable(BlockRegistryObject<?, ?> block) {
         BlockEntityTypeBuilder<TileEntityExtraUniversalCable> builder = transmitterBuilder(block, TileEntityExtraUniversalCable::new);
-        EnergyCompatUtils.addBlockCapabilities(builder);
+        builder.with(Capabilities.ENERGY.block(), CapabilityTileEntity.ENERGY_HANDLER_PROVIDER);
         if (Mekanism.hooks.computerCompatEnabled()) {
             ComputerCapabilityHelper.addComputerCapabilities(builder, ConstantPredicates.ALWAYS_TRUE);
         }

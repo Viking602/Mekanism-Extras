@@ -6,7 +6,7 @@
   },
   "item_input": {
     "count": 1,
-    "tag": "c:circuits/cosmic"
+    "ingredient": "#c:circuits/cosmic"
   },
   "output": {
     "count": 1,

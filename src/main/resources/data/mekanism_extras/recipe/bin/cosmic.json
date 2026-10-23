@@ -1,18 +1,10 @@
 {
   "type": "mekanism:mek_data",
   "key": {
-    "A": {
-      "tag": "mekanism_extras:alloys/shining"
-    },
-    "C": {
-      "tag": "c:circuits/cosmic"
-    },
-    "P": {
-      "item": "mekanism_extras:supreme_bin"
-    },
-    "_": {
-      "tag": "mekanism:stone_crafting_materials"
-    }
+    "A": "#mekanism_extras:alloys/shining",
+    "C": "#c:circuits/cosmic",
+    "P": "mekanism_extras:supreme_bin",
+    "_": "#mekanism:stone_crafting_materials"
   },
   "pattern": [
     "_C_",

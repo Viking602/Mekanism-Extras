@@ -1,12 +1,8 @@
 {
   "type": "minecraft:crafting_shaped",
   "key": {
-    "A": {
-      "item": "mekanism_extras:alloy_thermonuclear"
-    },
-    "P": {
-      "item": "mekanism_extras:absolute_universal_cable"
-    }
+    "A": "mekanism_extras:alloy_thermonuclear",
+    "P": "mekanism_extras:absolute_universal_cable"
   },
   "pattern": [
     "PPP",

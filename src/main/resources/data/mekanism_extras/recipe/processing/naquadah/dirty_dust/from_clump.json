@@ -2,7 +2,7 @@
   "type": "mekanism:crushing",
   "input": {
     "count": 1,
-    "tag": "c:clumps/naquadah"
+    "ingredient": "#c:clumps/naquadah"
   },
   "output": {
     "count": 1,

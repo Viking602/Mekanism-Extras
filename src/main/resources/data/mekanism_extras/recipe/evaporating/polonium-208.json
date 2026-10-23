@@ -8,7 +8,7 @@
   "type": "mekanism:evaporating",
   "input": {
     "amount": 10,
-    "fluid": "mekanism_extras:polonium_containing_solution"
+    "ingredient": "mekanism_extras:polonium_containing_solution"
   },
   "output": {
     "amount": 1,

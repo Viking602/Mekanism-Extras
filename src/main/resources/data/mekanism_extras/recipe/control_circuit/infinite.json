@@ -1,12 +1,8 @@
 {
   "type": "minecraft:crafting_shaped",
   "key": {
-    "A": {
-      "tag": "mekanism_extras:alloys/spectrum"
-    },
-    "C": {
-      "tag": "c:circuits/cosmic"
-    }
+    "A": "#mekanism_extras:alloys/spectrum",
+    "C": "#c:circuits/cosmic"
   },
   "pattern": [
     "ACA"

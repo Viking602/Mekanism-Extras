@@ -2,7 +2,7 @@ package com.jerry.mekextras.common.tier;
 
 import com.jerry.mekextras.api.tier.IAdvancedTier;
 
-import net.minecraft.util.FastColor;
+import net.minecraft.util.ARGB;
 
 public class TierColor {
 
@@ -15,7 +15,7 @@ public class TierColor {
 
     public static int getPackedColor(IAdvancedTier tier, float alpha) {
         int[] rgb = getRgb(tier);
-        return FastColor.ARGB32.color(FastColor.as8BitChannel(alpha), rgb[0], rgb[1], rgb[2]);
+        return ARGB.color(ARGB.as8BitChannel(alpha), rgb[0], rgb[1], rgb[2]);
     }
 
     public static int[] getRgb(IAdvancedTier tier) {

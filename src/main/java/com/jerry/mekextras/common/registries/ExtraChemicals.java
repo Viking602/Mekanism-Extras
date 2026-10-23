@@ -25,15 +25,15 @@ public class ExtraChemicals {
     public static final DeferredChemical<Chemical> RICH_URANIUM_FUEL = EXTRA_CHEMICALS.register(ExtraChemicalConstants.RICH_URANIUM_FUEL);
 
     // Infuse Type
-    public static final DeferredChemical<Chemical> RADIANCE = EXTRA_CHEMICALS.registerInfuse("radiance", 0xC4C604);
-    public static final DeferredChemical<Chemical> THERMONUCLEAR = EXTRA_CHEMICALS.registerInfuse("thermonuclear", 0x810C0C);
-    public static final DeferredChemical<Chemical> SHINING = EXTRA_CHEMICALS.register("shining", MekanismExtras.rl("infuse_type/shining"), 0xFAD1FE);
-    public static final DeferredChemical<Chemical> SPECTRUM = EXTRA_CHEMICALS.register("spectrum", MekanismExtras.rl("infuse_type/spectrum"), 0xBF3314);
-    public static final DeferredChemical<Chemical> LEAD = EXTRA_CHEMICALS.registerInfuse("lead", 0x627370);
+    public static final DeferredChemical<Chemical> RADIANCE = EXTRA_CHEMICALS.registerInfuse("radiance", 0xFFC4C604);
+    public static final DeferredChemical<Chemical> THERMONUCLEAR = EXTRA_CHEMICALS.registerInfuse("thermonuclear", 0xFF810C0C);
+    public static final DeferredChemical<Chemical> SHINING = EXTRA_CHEMICALS.register("shining", MekanismExtras.rl("infuse_type/shining"), 0xFFFAD1FE);
+    public static final DeferredChemical<Chemical> SPECTRUM = EXTRA_CHEMICALS.register("spectrum", MekanismExtras.rl("infuse_type/spectrum"), 0xFFBF3314);
+    public static final DeferredChemical<Chemical> LEAD = EXTRA_CHEMICALS.registerInfuse("lead", 0xFF627370);
 
     // Slurry
     // 如果之后有更多矿物可以使用批量添加
-    public static final SlurryRegistryObject<Chemical, Chemical> DIRTY_AND_CLEAN_SLURRIES_NAQUADAH = EXTRA_CHEMICALS.registerSlurry("naquadah", builder -> builder.tint(0x051602));
+    public static final SlurryRegistryObject<Chemical, Chemical> DIRTY_AND_CLEAN_SLURRIES_NAQUADAH = EXTRA_CHEMICALS.registerSlurry("naquadah", builder -> builder.tint(0xFF051602));
 
     public static void register(IEventBus eventBus) {
         EXTRA_CHEMICALS.register(eventBus);
